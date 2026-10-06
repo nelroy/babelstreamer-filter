@@ -19,9 +19,6 @@ jobs:
     permissions:
       contents: read
 
-  build-project:
-    name: Build Project 🧱
-    uses: ./.github/workflows/build-project.yaml
-    secrets: inherit
-    permissions:
-      contents: read
+  # No build-project job: compiling requires a local whisper.cpp checkout
+  # this repo's CI has no step to fetch/build - see push.yaml for the same
+  # note. The build is verified locally instead.

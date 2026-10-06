@@ -43,9 +43,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/plugin-support.c.in")
     # Fold plugin-support directly into the main target's sources instead of
     # creating a separate CMake/Xcode target, so a standalone Xcode project
     # has a single buildable target to Archive and notarize.
-    set(PLUGIN_SUPPORT_SOURCES
-        "${CMAKE_CURRENT_BINARY_DIR}/plugin-support.c" "${CMAKE_CURRENT_SOURCE_DIR}/src/plugin-support.h"
-        CACHE INTERNAL ""
+    set(
+      PLUGIN_SUPPORT_SOURCES
+      "${CMAKE_CURRENT_BINARY_DIR}/plugin-support.c"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/plugin-support.h"
+      CACHE INTERNAL
+      ""
     )
     set(PLUGIN_SUPPORT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE INTERNAL "")
   else()

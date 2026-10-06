@@ -61,26 +61,23 @@ static std::atomic<bool> frontendReadyFlag{false};
 // where we chack if the account is connected
 static void frontendReadyEvent(enum obs_frontend_event event, void *)
 {
-    if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING || event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED)
-    {
-        frontendReadyFlag.store(true);
-        /*
+	if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING || event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
+		frontendReadyFlag.store(true);
+		/*
             Offer to link on account on every plugin start, not just when someone presses the button.
             If OBS was never connected it looks fine right up until the first transcript is silently dropped.
          */
-        maybeOfferAccountLink();
-    }
-    else if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGING)
-    {
-        frontendReadyFlag.store(false);
-    }
+		maybeOfferAccountLink();
+	} else if (event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGING) {
+		frontendReadyFlag.store(false);
+	}
 }
 
 // No model no stream (Bob Marley)
 static void popupNoModelSelected()
 {
 	const std::string body = "No model is selected, you need to download a model from the "
-                              "config page before using the filter.";
+				 "config page before using the filter.";
 	showBabelStreamerPopup(PopupKind::NoModelSelected, "No Model Selected", body);
 }
 
@@ -100,7 +97,8 @@ void unwatchFrontendReady()
 static std::string deviceTokenCachePath()
 {
 	char *dir = obs_module_config_path(nullptr);
-	if (!dir) return {};
+	if (!dir)
+		return {};
 	std::string path(dir);
 	bfree(dir);
 	if (!path.empty() && path.back() != '/' && path.back() != '\\')
@@ -113,36 +111,38 @@ static std::string deviceTokenCachePath()
 static std::string readCachedDeviceToken()
 {
 	const std::string path = deviceTokenCachePath();
-	if (path.empty()) return {};
+	if (path.empty())
+		return {};
 	std::ifstream in(path, std::ios::binary);
-	if (!in) return {};
+	if (!in)
+		return {};
 	std::string token((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-	
-    // Trim trailing whitespace/newline a text editor might add.
-	while (!token.empty() && (token.back() == '\n' || token.back() == '\r' || token.back() == ' ' || token.back() == '\t'))
-    {
-        token.pop_back();
-    }
+
+	// Trim trailing whitespace/newline a text editor might add.
+	while (!token.empty() &&
+	       (token.back() == '\n' || token.back() == '\r' || token.back() == ' ' || token.back() == '\t')) {
+		token.pop_back();
+	}
 	return token;
 }
 
 // Write the device token (if any) back to cache
 static void writeCachedDeviceToken(const std::string &token)
 {
-	if (token.empty()) return;
+	if (token.empty())
+		return;
 	char *dir = obs_module_config_path(nullptr);
-	if (dir)
-    {
+	if (dir) {
 		os_mkdirs(dir);
 		bfree(dir);
 	}
 	const std::string path = deviceTokenCachePath();
-	if (path.empty()) return;
+	if (path.empty())
+		return;
 	std::ofstream out(path, std::ios::binary | std::ios::trunc);
-	if (out) out << token;
+	if (out)
+		out << token;
 }
-
-
 
 /*
     Get the URL of the server api. This is different from the website download
@@ -166,7 +166,8 @@ static std::string deriveApiBase(WhisperFilter *f)
 		port = f->wsPort;
 		tls = f->wsUseTls;
 	}
-	if (host.empty()) 	return std::string();
+	if (host.empty())
+		return std::string();
 
 	const char *scheme = tls ? "https" : "http";
 	const uint16_t defPort = tls ? 443 : 80;
@@ -175,7 +176,6 @@ static std::string deriveApiBase(WhisperFilter *f)
 		authority += ":" + std::to_string(port);
 	return std::string(scheme) + "://" + authority + "/api";
 }
-
 
 void filterDefaults(obs_data_t *settings)
 {
@@ -211,7 +211,8 @@ static std::vector<ProcessingDeviceOption> processingDeviceOptions()
 		opts.push_back({dev.id, dev.label});
 	opts.push_back({"cpu", "CPU (no GPU)"});
 #if HAS_WHISPER_COREML
-	if (isAppleSilicon()) opts.push_back({ANE_DEVICE_ID, "Apple Neural Engine (Core ML)"});
+	if (isAppleSilicon())
+		opts.push_back({ANE_DEVICE_ID, "Apple Neural Engine (Core ML)"});
 #endif
 	return opts;
 }
@@ -220,7 +221,8 @@ static std::vector<ProcessingDeviceOption> processingDeviceOptions()
 static std::string aneDeviceIdIfAvailable()
 {
 #if HAS_WHISPER_COREML
-	if (isAppleSilicon()) return ANE_DEVICE_ID;
+	if (isAppleSilicon())
+		return ANE_DEVICE_ID;
 #endif
 	return std::string();
 }
@@ -233,19 +235,22 @@ static std::string aneDeviceIdIfAvailable()
  */
 static void applyStandardModelOutcome(WhisperFilter *filter, const StandardModelOutcome &out)
 {
-	if (out.modelPath.empty())  return;
+	if (out.modelPath.empty())
+		return;
 	obs_data_t *settings = obs_source_get_settings(filter->context);
 	obs_data_set_string(settings, S_MODEL_PATH, out.modelPath.c_str());
-	if (!out.deviceId.empty()) obs_data_set_string(settings, S_GPU_DEVICE, out.deviceId.c_str());
-	if (out.englishOnly)obs_data_set_string(settings, S_SOURCE_LANG, "en");
+	if (!out.deviceId.empty())
+		obs_data_set_string(settings, S_GPU_DEVICE, out.deviceId.c_str());
+	if (out.englishOnly)
+		obs_data_set_string(settings, S_SOURCE_LANG, "en");
 	obs_data_release(settings);
 	obs_source_update(filter->context, nullptr);
 
-    // Note: model is process wide so this applies to all filters
-	if (out.englishOnly) applySourceLangToAll("en", filter);
+	// Note: model is process wide so this applies to all filters
+	if (out.englishOnly)
+		applySourceLangToAll("en", filter);
 	obs_source_update_properties(filter->context);
 }
-
 
 /*
     Handle the download model button. Usually this is to download the Whisper
@@ -256,26 +261,25 @@ static void applyStandardModelOutcome(WhisperFilter *filter, const StandardModel
 static bool onDownloadModelClicked(obs_properties_t *, obs_property_t *, void *data)
 {
 	auto *filter = static_cast<WhisperFilter *>(data);
-	if (!filter) return false;
+	if (!filter)
+		return false;
 
 #if HAS_WHISPER_COREML
-    // Deal with ANE download form here
-	if (isAppleSilicon() && filter->gpuDeviceId == ANE_DEVICE_ID && !filter->modelPath.empty())
-    {
-        // try and get the encoder
+	// Deal with ANE download form here
+	if (isAppleSilicon() && filter->gpuDeviceId == ANE_DEVICE_ID && !filter->modelPath.empty()) {
+		// try and get the encoder
 		CoremlEncoderResult res = CoremlEncoderResult::Failed;
-		downloadCoremlEncoderFor(filter->modelPath, /*askFirst=*/false, [&res](CoremlEncoderResult r) { res = r; });
-		if (res == CoremlEncoderResult::NotAvailable)
-        {
+		downloadCoremlEncoderFor(filter->modelPath, /*askFirst=*/false,
+					 [&res](CoremlEncoderResult r) { res = r; });
+		if (res == CoremlEncoderResult::NotAvailable) {
 			showBabelStreamerPopup(PopupKind::NoModelSelected, "Neural Engine",
 					       "No Neural Engine model is published for this whisper model, so it "
 					       "can only run on the CPU or the GPU. Choose a different processing "
 					       "device, or switch to the standard model.");
 		}
-		if (res == CoremlEncoderResult::Installed)
-        {
+		if (res == CoremlEncoderResult::Installed) {
 			// Remove the model and rebuild. Note that existing models in use
-            // will be retained until the filter is finished
+			// will be retained until the filter is finished
 			WhisperModel::invalidate(filter->modelPath, effectiveDeviceId(filter));
 			requestReloadAll();
 		}
@@ -283,10 +287,11 @@ static bool onDownloadModelClicked(obs_properties_t *, obs_property_t *, void *d
 	}
 #endif
 
-    // otherwise we just go to download a  standard model
+	// otherwise we just go to download a  standard model
 	downloadStandardModelGuided(processingDeviceOptions(), filter->gpuDeviceId, aneDeviceIdIfAvailable(),
-				    /*explainFirst=*/false,
-				    [filter](const StandardModelOutcome &out) { applyStandardModelOutcome(filter, out); });
+				    /*explainFirst=*/false, [filter](const StandardModelOutcome &out) {
+					    applyStandardModelOutcome(filter, out);
+				    });
 	return true;
 }
 
@@ -295,13 +300,13 @@ static bool onDownloadModelClicked(obs_properties_t *, obs_property_t *, void *d
  */
 void offerModelDownload(WhisperFilter *filter)
 {
-    // don't put this up until the scene load is done
-	if (frontendReadyFlag.load())
-    {
+	// don't put this up until the scene load is done
+	if (frontendReadyFlag.load()) {
 		runOnUiThreadLater([filter] {
-			if (!filterStillRegistered(filter)) return; // destroyed while this was queued
+			if (!filterStillRegistered(filter))
+				return;                // destroyed while this was queued
 			if (filter->modelPath.empty()) // may have sorted itself out while queued
-            {
+			{
 				downloadStandardModelGuided(processingDeviceOptions(), filter->gpuDeviceId,
 							    aneDeviceIdIfAvailable(), /*explainFirst=*/true,
 							    [filter](const StandardModelOutcome &out) {
@@ -313,10 +318,9 @@ void offerModelDownload(WhisperFilter *filter)
 		});
 		return;
 	}
-    // throwaway thread to run the popup not selected warning
+	// throwaway thread to run the popup not selected warning
 	std::thread(popupNoModelSelected).detach();
 }
-
 
 //forward declaration
 static void aneAskTask(void *param);
@@ -326,11 +330,12 @@ static void aneAskTask(void *param);
     Reset mismatched models and to queue a request to load the model
  */
 static void checkAnePairing(WhisperFilter *filter, obs_data_t *settings, const std::string &newModel,
-                            const std::string &newGpuDevice)
+			    const std::string &newGpuDevice)
 {
 #if HAS_WHISPER_COREML
 	(void)settings;
-	if (!isAppleSilicon()) return;
+	if (!isAppleSilicon())
+		return;
 
 	/*
         filterUpdate() runs several times for one edit, so act on a pair that is
@@ -339,23 +344,23 @@ static void checkAnePairing(WhisperFilter *filter, obs_data_t *settings, const s
         are in checking the model/device pair
      */
 	const std::string pair = newModel + '\x1f' + newGpuDevice;
-	if (pair == filter->anePairChecked) return;
-	
-    const bool wasPrimed = filter->anePairPrimed;
+	if (pair == filter->anePairChecked)
+		return;
+
+	const bool wasPrimed = filter->anePairPrimed;
 	filter->anePairChecked = pair;
 	filter->anePairPrimed = true;
 
-    // if we don't have an ANE or we don't have a new model, then abandon
-	if (newGpuDevice != ANE_DEVICE_ID || newModel.empty()) return;
+	// if we don't have an ANE or we don't have a new model, then abandon
+	if (newGpuDevice != ANE_DEVICE_ID || newModel.empty())
+		return;
 
 	std::error_code ec;
 	if (std::filesystem::exists(coremlAdjacentPath(newModel), ec) || coremlEncoderCached(newModel))
 		return; // there is already an encoder for this model
 
-
-    // bail first time round, because it will be called once on startup when we are not ready
-	if (!wasPrimed || !frontendReadyFlag.load())
-    {
+	// bail first time round, because it will be called once on startup when we are not ready
+	if (!wasPrimed || !frontendReadyFlag.load()) {
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] No Neural Engine encoder for '%s' - the encoder "
 		     "will run on the CPU. Use \"Download Neural Engine Model\" in this filter's "
@@ -369,11 +374,10 @@ static void checkAnePairing(WhisperFilter *filter, obs_data_t *settings, const s
 	filter->aneRevertDevice = (newGpuDevice != filter->gpuDeviceId);
 	filter->anePrevModel = filter->modelPath;
 	filter->anePrevDevice = filter->gpuDeviceId;
-	if (!filter->anePromptQueued)
-    {
+	if (!filter->anePromptQueued) {
 		filter->anePromptQueued = true;
-		
-        // aneAskTask is blocking, so run in different context
+
+		// aneAskTask is blocking, so run in different context
 		runOnUiThreadLater([filter] { aneAskTask(filter); });
 	}
 #else
@@ -383,7 +387,6 @@ static void checkAnePairing(WhisperFilter *filter, obs_data_t *settings, const s
 	(void)newGpuDevice;
 #endif
 }
-
 
 /*
     This is where we actually ask to download the neural engine. Note that we have
@@ -397,9 +400,10 @@ static void aneAskTask(void *param)
 	auto *filter = static_cast<WhisperFilter *>(param);
 
 	// Check that the filter wasn't disabled/deleted while we were queueing
-	if (!filterStillRegistered(filter)) return;
-	
-    filter->anePromptQueued = false;
+	if (!filterStillRegistered(filter))
+		return;
+
+	filter->anePromptQueued = false;
 
 #if HAS_WHISPER_COREML
 	/*
@@ -408,18 +412,18 @@ static void aneAskTask(void *param)
      */
 	const std::string model = filter->modelPath;
 	const std::string device = filter->gpuDeviceId;
-	if (device != ANE_DEVICE_ID || model.empty()) return;
+	if (device != ANE_DEVICE_ID || model.empty())
+		return;
 	std::error_code ec;
 	if (std::filesystem::exists(coremlAdjacentPath(model), ec) || coremlEncoderCached(model))
 		return;
 
-    // Try and download the model - mark failed and check later for success
+	// Try and download the model - mark failed and check later for success
 	CoremlEncoderResult res = CoremlEncoderResult::Failed;
 	downloadCoremlEncoderFor(model, /*askFirst=*/true, [&res](CoremlEncoderResult r) { res = r; });
 
-    // If OK then we are done here
-	if (res == CoremlEncoderResult::Installed)
-    {
+	// If OK then we are done here
+	if (res == CoremlEncoderResult::Installed) {
 		WhisperModel::invalidate(model, "cpu"); // ANE's effective device
 		requestReloadAll();
 		return;
@@ -429,11 +433,11 @@ static void aneAskTask(void *param)
 	const bool revertDevice = filter->aneRevertDevice;
 	const std::string keptModel = revertDevice ? model : filter->anePrevModel;
 	const std::string keptDevice = revertDevice ? filter->anePrevDevice : device;
-	
-    // Mark that we've checked this previous model to avoid multiple popups being queued
+
+	// Mark that we've checked this previous model to avoid multiple popups being queued
 	filter->anePairChecked = keptModel + '\x1f' + keptDevice;
 
-    // Update the settings with the correct device or model
+	// Update the settings with the correct device or model
 	obs_data_t *settings = obs_source_get_settings(filter->context);
 	obs_data_set_string(settings, revertDevice ? S_GPU_DEVICE : S_MODEL_PATH,
 			    (revertDevice ? keptDevice : keptModel).c_str());
@@ -466,9 +470,10 @@ static void aneAskTask(void *param)
 static bool onGpuDeviceChanged(obs_properties_t *props, obs_property_t *, obs_data_t *settings)
 {
 	obs_property_t *btn = obs_properties_get(props, "download_standard_model");
-	if (!btn) return false; // no Qt UI (button not added) - nothing to relabel
-	
-    const char *dev = obs_data_get_string(settings, S_GPU_DEVICE);
+	if (!btn)
+		return false; // no Qt UI (button not added) - nothing to relabel
+
+	const char *dev = obs_data_get_string(settings, S_GPU_DEVICE);
 	const bool neural = dev && std::string(dev) == ANE_DEVICE_ID;
 	obs_property_set_description(btn, neural ? "Download Neural Engine Model" : "Download Standard Model");
 	return true;
@@ -489,7 +494,8 @@ static bool onHelpClicked(obs_properties_t *, obs_property_t *, void *)
 static bool onConnectAccountClicked(obs_properties_t *, obs_property_t *, void *data)
 {
 	auto *filter = static_cast<WhisperFilter *>(data);
-	if (!filter) return false;
+	if (!filter)
+		return false;
 
 	bool changed = false;
 	connectAccountViaDeviceCode(deriveApiBase(filter),
@@ -514,32 +520,37 @@ static bool onConnectAccountClicked(obs_properties_t *, obs_property_t *, void *
 static std::atomic<bool> accountOfferMade{false};
 void maybeOfferAccountLink()
 {
-	if (!frontendReadyFlag.load()) return;
-	if (accountOfferMade.load()) return;
+	if (!frontendReadyFlag.load())
+		return;
+	if (accountOfferMade.load())
+		return;
 
 	runOnUiThreadLater([] {
 		// A token is system wide but we need to link it to a specific filter
 		WhisperFilter *filter = firstRegisteredFilter();
-		if (!filter) return; // nothing to connect yet - the next filterCreate asks again
-		if (!readCachedDeviceToken().empty()) return; // already connected
-		
-        {
-			std::lock_guard<std::mutex> lock(filter->stateMtx);
-			if (!filter->deviceToken.empty()) return;
-		}
-        
-		// We're not bailing out, so we can latch the offer now
-		if (accountOfferMade.exchange(true)) return;
+		if (!filter)
+			return; // nothing to connect yet - the next filterCreate asks again
+		if (!readCachedDeviceToken().empty())
+			return; // already connected
 
-        // Before we do it, ask politely
-		if (!askToConnectAccount())
-        {
+		{
+			std::lock_guard<std::mutex> lock(filter->stateMtx);
+			if (!filter->deviceToken.empty())
+				return;
+		}
+
+		// We're not bailing out, so we can latch the offer now
+		if (accountOfferMade.exchange(true))
+			return;
+
+		// Before we do it, ask politely
+		if (!askToConnectAccount()) {
 			blog(LOG_INFO, "[babelstreamer-filter] No account connected - the streamer chose to "
 				       "link later with the \"Connect account\" button");
 			return;
 		}
-        
-        // and now we do the actual connection (which might fail BTW)
+
+		// and now we do the actual connection (which might fail BTW)
 		connectAccountViaDeviceCode(deriveApiBase(filter),
 					    [filter](const std::string &token, const std::string & /*label*/) {
 						    if (token.empty())
@@ -559,29 +570,26 @@ obs_properties_t *filterProperties(void *data)
 {
 	auto *filter = static_cast<WhisperFilter *>(data);
 	obs_properties_t *props = obs_properties_create();
-	refreshGameVocabulary();  //  Update the the current game list asynchronously
+	refreshGameVocabulary(); //  Update the the current game list asynchronously
 
-    // Only the master (first, by OBS's own source/filter order) filter can
-    // edit the plugin-wide device/model settings - see FilterOrigin.hpp's
-    // isMasterFilterSource(). Every other filter's copies of those fields
-    // are made read-only further down.
-    const bool isMaster = filter && isMasterFilterSource(filter->context);
+	// Only the master (first, by OBS's own source/filter order) filter can
+	// edit the plugin-wide device/model settings - see FilterOrigin.hpp's
+	// isMasterFilterSource(). Every other filter's copies of those fields
+	// are made read-only further down.
+	const bool isMaster = filter && isMasterFilterSource(filter->context);
 
 	obs_properties_add_button(props, "get_help", "Get Help on these settings", onHelpClicked);
-	
-    // Do the read-only status fields
-    bool hasAccount = false;
-	if (filter)
-    {
+
+	// Do the read-only status fields
+	bool hasAccount = false;
+	if (filter) {
 		std::lock_guard<std::mutex> lock(filter->stateMtx);
 		hasAccount = !filter->deviceToken.empty();
 	}
 
-	if (filter)
-    {
+	if (filter) {
 		obs_data_t *liveSettings = obs_source_get_settings(filter->context);
-		if (hasAccount)
-        {
+		if (hasAccount) {
 			std::string sessionKey;
 			{
 				// Written by the sender thread on every session frame.
@@ -595,9 +603,8 @@ obs_properties_t *filterProperties(void *data)
 		obs_data_release(liveSettings);
 	}
 
-    // Session key is only relevant if you actually have a linked account
-	if (hasAccount)
-    {
+	// Session key is only relevant if you actually have a linked account
+	if (hasAccount) {
 		obs_properties_add_text(props, S_SESSION_KEY, "Session key", OBS_TEXT_DEFAULT);
 		obs_property_set_enabled(obs_properties_get(props, S_SESSION_KEY), false);
 	}
@@ -605,7 +612,7 @@ obs_properties_t *filterProperties(void *data)
 	obs_properties_add_text(props, S_PLUGIN_VERSION, "Version", OBS_TEXT_DEFAULT);
 	obs_property_set_enabled(obs_properties_get(props, S_PLUGIN_VERSION), false);
 
-    // Speaker name is optional per filter
+	// Speaker name is optional per filter
 	obs_properties_add_text(props, S_SPEAKER_NAME, "Speaker name (optional)", OBS_TEXT_DEFAULT);
 	obs_property_set_long_description(obs_properties_get(props, S_SPEAKER_NAME),
 					  "Shown to viewers in front of this source's captions, e.g. {Alice}, "
@@ -614,8 +621,8 @@ obs_properties_t *filterProperties(void *data)
 					  "Use one filter per speaker (separate mics, or Discord participants on "
 					  "separate tracks) and give each its own name. Leave blank for a single "
 					  "unattributed source.");
-    
-    // Choose a text overlay to send captions to
+
+	// Choose a text overlay to send captions to
 	obs_property_t *srcList = obs_properties_add_list(props, S_TEXT_SOURCE_NAME, "Caption Text Output",
 							  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 
@@ -623,8 +630,7 @@ obs_properties_t *filterProperties(void *data)
 
 	// Enumerate all sources so the user can pick whichever Text source they
 	// created, regardless of which FreeType2/GDI+ variant OBS installed.
-	struct EnumCtx
-    {
+	struct EnumCtx {
 		obs_property_t *list;
 	};
 	EnumCtx ctx{srcList};
@@ -633,8 +639,7 @@ obs_properties_t *filterProperties(void *data)
 		[](void *param, obs_source_t *source) -> bool {
 			const char *id = obs_source_get_id(source);
 			// Accept any source whose type ID contains "text"
-			if (id && strstr(id, "text"))
-            {
+			if (id && strstr(id, "text")) {
 				const char *name = obs_source_get_name(source);
 				obs_property_list_add_string(static_cast<EnumCtx *>(param)->list, name, name);
 			}
@@ -653,10 +658,9 @@ obs_properties_t *filterProperties(void *data)
 	// Processing devices: GPUs, Metal, ANE and CPU as fallback
 	obs_property_t *gpuList = obs_properties_add_list(props, S_GPU_DEVICE, "Processing device", OBS_COMBO_TYPE_LIST,
 							  OBS_COMBO_FORMAT_STRING);
-	for (const auto &dev : WhisperWrapper::listAvailableDevices())
-    {
-        obs_property_list_add_string(gpuList, dev.label.c_str(), dev.id.c_str());
-    }
+	for (const auto &dev : WhisperWrapper::listAvailableDevices()) {
+		obs_property_list_add_string(gpuList, dev.label.c_str(), dev.id.c_str());
+	}
 	obs_property_list_add_string(gpuList, "CPU (no GPU)", "cpu");
 	obs_property_set_long_description(gpuList,
 					  "Shared by every BabelStreamer filter in this OBS - changing it here "
@@ -665,8 +669,7 @@ obs_properties_t *filterProperties(void *data)
 					  "model, so filters using the same model cannot run on different devices.");
 #if HAS_WHISPER_COREML
 	// ANE requires a one time download to match the loaded model
-	if (isAppleSilicon())
-    {
+	if (isAppleSilicon()) {
 		obs_property_list_add_string(gpuList, "Apple Neural Engine (Core ML)", ANE_DEVICE_ID);
 		obs_property_set_modified_callback(gpuList, onGpuDeviceChanged);
 	}
@@ -688,29 +691,27 @@ obs_properties_t *filterProperties(void *data)
 	}
 #endif
 
+	// Followers can't edit the model/device - grey them out and show the
+	// real shared value (their own copies may be stale, since a follower's
+	// filterUpdate() only runs when its own panel is applied, not whenever
+	// the master publishes a change).
+	if (filter && !isMaster) {
+		obs_data_t *liveSettings = obs_source_get_settings(filter->context);
+		obs_data_set_string(liveSettings, S_MODEL_PATH, readStoredModelPath().c_str());
+		obs_data_set_string(liveSettings, S_GPU_DEVICE, readStoredProcessingDevice().c_str());
+		obs_data_release(liveSettings);
 
-    // Followers can't edit the model/device - grey them out and show the
-    // real shared value (their own copies may be stale, since a follower's
-    // filterUpdate() only runs when its own panel is applied, not whenever
-    // the master publishes a change).
-    if (filter && !isMaster)
-    {
-        obs_data_t *liveSettings = obs_source_get_settings(filter->context);
-        obs_data_set_string(liveSettings, S_MODEL_PATH, readStoredModelPath().c_str());
-        obs_data_set_string(liveSettings, S_GPU_DEVICE, readStoredProcessingDevice().c_str());
-        obs_data_release(liveSettings);
+		obs_property_set_enabled(obs_properties_get(props, S_MODEL_PATH), false);
+		obs_property_set_enabled(obs_properties_get(props, S_GPU_DEVICE), false);
+		if (obs_property_t *downloadBtn = obs_properties_get(props, "download_standard_model"))
+			obs_property_set_enabled(downloadBtn, false);
 
-        obs_property_set_enabled(obs_properties_get(props, S_MODEL_PATH), false);
-        obs_property_set_enabled(obs_properties_get(props, S_GPU_DEVICE), false);
-        if (obs_property_t *downloadBtn = obs_properties_get(props, "download_standard_model"))
-            obs_property_set_enabled(downloadBtn, false);
-
-        const char *followerHint = "Shared by every BabelStreamer filter in this OBS. Controlled by the "
-                                    "master filter - the first one in your Sources list - open its "
-                                    "properties to change it.";
-        obs_property_set_long_description(obs_properties_get(props, S_MODEL_PATH), followerHint);
-        obs_property_set_long_description(obs_properties_get(props, S_GPU_DEVICE), followerHint);
-    }
+		const char *followerHint = "Shared by every BabelStreamer filter in this OBS. Controlled by the "
+					   "master filter - the first one in your Sources list - open its "
+					   "properties to change it.";
+		obs_property_set_long_description(obs_properties_get(props, S_MODEL_PATH), followerHint);
+		obs_property_set_long_description(obs_properties_get(props, S_GPU_DEVICE), followerHint);
+	}
 
 	// Connect account button
 	obs_properties_add_button(props, "connect_account", "Connect account", onConnectAccountClicked);
@@ -723,9 +724,8 @@ obs_properties_t *filterProperties(void *data)
 				"Only connect while live streaming "
 				"(uncheck to always connect - for testing)");
 
-	
-    // Choose an input language. Also dependent on model, English only models dont
-    // have much to choose :-)
+	// Choose an input language. Also dependent on model, English only models dont
+	// have much to choose :-)
 	obs_property_t *langList = obs_properties_add_list(props, S_SOURCE_LANG, "Speech Language", OBS_COMBO_TYPE_LIST,
 							   OBS_COMBO_FORMAT_STRING);
 	obs_property_list_add_string(langList, "Auto-detect", "auto");
@@ -734,8 +734,8 @@ obs_properties_t *filterProperties(void *data)
 	obs_property_list_add_string(langList, "Español (Spanish)", "es");
 	obs_property_list_add_string(langList, "Deutsch (German)", "de");
 	obs_property_list_add_string(langList, "Français (French)", "fr");
-	
-    // Every other language is possible, but not optimised translation (see comment below)
+
+	// Every other language is possible, but not optimised translation (see comment below)
 	obs_property_list_add_string(langList, "Afrikaans", "af");
 	obs_property_list_add_string(langList, "Albanian", "sq");
 	obs_property_list_add_string(langList, "Amharic", "am");
@@ -842,10 +842,9 @@ obs_properties_t *filterProperties(void *data)
 	obs_property_t *gameList = obs_properties_add_list(props, S_GAME_PRESET, "Game (auto-inject vocabulary)",
 							   OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 	obs_property_list_add_string(gameList, "(None)", "");
-	for (const std::string &name : cachedGameNames())
-    {
-        obs_property_list_add_string(gameList, name.c_str(), name.c_str());
-    }
+	for (const std::string &name : cachedGameNames()) {
+		obs_property_list_add_string(gameList, name.c_str(), name.c_str());
+	}
 
 	// Custom vocab - extra injection of user custom vocab filr
 	obs_properties_add_path(props, S_CUSTOM_VOCAB_FILE, "Custom Vocab File", OBS_PATH_FILE, "*.txt", nullptr);
@@ -862,28 +861,26 @@ obs_properties_t *filterProperties(void *data)
 	obs_properties_add_text(props, S_WS_HOST, "Server address", OBS_TEXT_DEFAULT);
 	obs_properties_add_int(props, S_WS_PORT, "Server Port", 1, 65535, 1);
 
-    // Auto on if server adress includes wss://
+	// Auto on if server adress includes wss://
 	obs_properties_add_bool(props, S_WS_USE_TLS, "Use secure connection (wss://)");
 
-    // Only the master filter has access to these properties
-    if (filter && !isMaster)
-    {
-        obs_property_set_enabled(obs_properties_get(props, "connect_account"), false);
-        obs_property_set_enabled(obs_properties_get(props, S_DEVICE_TOKEN), false);
-        obs_property_set_enabled(obs_properties_get(props, S_WS_HOST), false);
-        obs_property_set_enabled(obs_properties_get(props, S_WS_PORT), false);
-        obs_property_set_enabled(obs_properties_get(props, S_WS_USE_TLS), false);
+	// Only the master filter has access to these properties
+	if (filter && !isMaster) {
+		obs_property_set_enabled(obs_properties_get(props, "connect_account"), false);
+		obs_property_set_enabled(obs_properties_get(props, S_DEVICE_TOKEN), false);
+		obs_property_set_enabled(obs_properties_get(props, S_WS_HOST), false);
+		obs_property_set_enabled(obs_properties_get(props, S_WS_PORT), false);
+		obs_property_set_enabled(obs_properties_get(props, S_WS_USE_TLS), false);
 
-        const char *connectionHint = "Shared by every BabelStreamer filter in this OBS. Controlled by the "
-                                      "master filter - the first one in your Sources list - open its "
-                                      "properties to change it.";
-        obs_property_set_long_description(obs_properties_get(props, S_DEVICE_TOKEN), connectionHint);
-        obs_property_set_long_description(obs_properties_get(props, S_WS_HOST), connectionHint);
-    }
+		const char *connectionHint = "Shared by every BabelStreamer filter in this OBS. Controlled by the "
+					     "master filter - the first one in your Sources list - open its "
+					     "properties to change it.";
+		obs_property_set_long_description(obs_properties_get(props, S_DEVICE_TOKEN), connectionHint);
+		obs_property_set_long_description(obs_properties_get(props, S_WS_HOST), connectionHint);
+	}
 
 	return props;
 }
-
 
 /*
  Convert the server address fields to a normalised host/port pair. Mainly useful
@@ -900,21 +897,20 @@ static std::pair<std::string, uint16_t> parseWsHostInput(const std::string &rawH
 {
 	std::string s = rawHost;
 
-    // teeny helper
-	auto notSpace = [](unsigned char c)
-    {
+	// teeny helper
+	auto notSpace = [](unsigned char c) {
 		return !std::isspace(c);
 	};
-    
+
 	s.erase(s.begin(), std::find_if(s.begin(), s.end(), notSpace));
 	s.erase(std::find_if(s.rbegin(), s.rend(), notSpace).base(), s.end());
 
-	if (s.empty()) return {s, fallbackPort};
+	if (s.empty())
+		return {s, fallbackPort};
 
 	// Strip a leading "scheme://", whatever the scheme but note if it was secure
 	size_t schemeEnd = s.find("://");
-	if (schemeEnd != std::string::npos)
-    {
+	if (schemeEnd != std::string::npos) {
 		std::string scheme = s.substr(0, schemeEnd);
 		std::transform(scheme.begin(), scheme.end(), scheme.begin(),
 			       [](unsigned char c) { return (char)std::tolower(c); });
@@ -927,48 +923,42 @@ static std::pair<std::string, uint16_t> parseWsHostInput(const std::string &rawH
 
 	// Drop any trailing path/query - the plugin builds its own path.
 	size_t slash = s.find('/');
-	if (slash != std::string::npos) s = s.substr(0, slash);
+	if (slash != std::string::npos)
+		s = s.substr(0, slash);
 
-	if (s.empty())return {s, fallbackPort};
+	if (s.empty())
+		return {s, fallbackPort};
 
 	uint16_t port = fallbackPort;
 	std::string host = s;
 
-    // Another teeny helper
+	// Another teeny helper
 	auto isAllDigits = [](const std::string &str) {
 		return !str.empty() &&
 		       std::all_of(str.begin(), str.end(), [](unsigned char c) { return std::isdigit(c); });
 	};
 
-	if (s.front() == '[')
-    {
+	if (s.front() == '[') {
 		// IPv6 literal, e.g. [::1]:8090
 		size_t close = s.find(']');
-		if (close != std::string::npos)
-        {
+		if (close != std::string::npos) {
 			host = s.substr(1, close - 1);
-			if (close + 1 < s.size() && s[close + 1] == ':')
-            {
+			if (close + 1 < s.size() && s[close + 1] == ':') {
 				std::string portStr = s.substr(close + 2);
-				if (isAllDigits(portStr))
-                {
+				if (isAllDigits(portStr)) {
 					long p = std::strtol(portStr.c_str(), nullptr, 10);
-					if (p >= 1 && p <= 65535) port = (uint16_t)p;
+					if (p >= 1 && p <= 65535)
+						port = (uint16_t)p;
 				}
 			}
 		}
-	}
-    else
-    {
+	} else {
 		size_t colon = s.rfind(':');
-		if (colon != std::string::npos)
-        {
+		if (colon != std::string::npos) {
 			std::string portStr = s.substr(colon + 1);
-			if (isAllDigits(portStr))
-            {
+			if (isAllDigits(portStr)) {
 				long p = std::strtol(portStr.c_str(), nullptr, 10);
-				if (p >= 1 && p <= 65535)
-                {
+				if (p >= 1 && p <= 65535) {
 					host = s.substr(0, colon);
 					port = (uint16_t)p;
 				}
@@ -991,19 +981,18 @@ static std::pair<std::string, uint16_t> parseWsHostInput(const std::string &rawH
  */
 static std::string loadCustomVocabFile(const std::string &path)
 {
-	if (path.empty())return {};
+	if (path.empty())
+		return {};
 
 	std::ifstream file(path);
-	if (!file.is_open())
-    {
+	if (!file.is_open()) {
 		blog(LOG_WARNING, "[babelstreamer-filter] Could not open custom vocabulary file: %s", path.c_str());
 		return {};
 	}
 
 	std::string out;
 	std::string line;
-	while (std::getline(file, line))
-    {
+	while (std::getline(file, line)) {
 		// Trim whitespace - also strips a trailing '\r' from CRLF-saved files.
 		size_t a = line.find_first_not_of(" \t\r\n");
 		if (a == std::string::npos)
@@ -1043,52 +1032,45 @@ void filterUpdate(void *data, obs_data_t *settings)
 	bool rawUseTls = obs_data_get_bool(settings, S_WS_USE_TLS);
 	bool newUseTls = rawUseTls;
 	auto [newHost, newPort] = parseWsHostInput(rawHost, rawPort, newUseTls);
-  
-    // If there's no token in the UI then fall back to the cached token, if any
-    std::string newDeviceToken = obs_data_get_string(settings, S_DEVICE_TOKEN);
-	if (newDeviceToken.empty())
-    {
+
+	// If there's no token in the UI then fall back to the cached token, if any
+	std::string newDeviceToken = obs_data_get_string(settings, S_DEVICE_TOKEN);
+	if (newDeviceToken.empty()) {
 		std::string cached = readCachedDeviceToken();
-		if (!cached.empty())
-        {
+		if (!cached.empty()) {
 			newDeviceToken = cached;
 			obs_data_set_string(settings, S_DEVICE_TOKEN, cached.c_str());
 		}
-	}
-    else if (newDeviceToken != readCachedDeviceToken())
-    {
+	} else if (newDeviceToken != readCachedDeviceToken()) {
 		writeCachedDeviceToken(newDeviceToken);
 	}
-    
+
 	bool newStreamGateEnabled = obs_data_get_bool(settings, S_STREAM_GATE_ENABLED);
 	std::string newLang = obs_data_get_string(settings, S_SOURCE_LANG);
 	std::string newCustomVocabPath = obs_data_get_string(settings, S_CUSTOM_VOCAB_FILE);
 	std::string newCustomVocab = loadCustomVocabFile(newCustomVocabPath);
 	std::string newGamePreset = obs_data_get_string(settings, S_GAME_PRESET);
-	
-    
-    // Whisper worker callback reads every cyle so needs protecting
-    {
+
+	// Whisper worker callback reads every cyle so needs protecting
+	{
 		std::lock_guard<std::mutex> lk(filter->stateMtx);
 		filter->gamePreset = newGamePreset;
 	}
 
-    /*
+	/*
         We build an initial prompt here and order is important. Whisper will
         truncate if the max token count is exceeded, so we put the most
         important terms first
      */
-    
-    std::string newGameTerms = cachedGameTerms(newGamePreset);
-	if (!newGameTerms.empty())
-    {
+
+	std::string newGameTerms = cachedGameTerms(newGamePreset);
+	if (!newGameTerms.empty()) {
 		newCustomVocab = newCustomVocab.empty() ? newGameTerms : newCustomVocab + ", " + newGameTerms;
 	}
-    
-    
+
 	int newVadThresholdPct = (int)obs_data_get_int(settings, S_VAD_THRESHOLD);
-	
-    /*
+
+	/*
         Processing device and model are shared across every filter, but only
         the MASTER filter's panel is allowed to change them (see
         FilterOrigin.hpp's isMasterFilterSource() - the first filter in OBS's
@@ -1097,19 +1079,17 @@ void filterUpdate(void *data, obs_data_t *settings)
         panel is read-only (see filterProperties()), so there is nothing to
         reconcile for it - it just mirrors whatever the master has published.
      */
-    const bool isMaster = isMasterFilterSource(filter->context);
-    std::string newGpuDevice = obs_data_get_string(settings, S_GPU_DEVICE);
-	if (isMaster)
-	{
+	const bool isMaster = isMasterFilterSource(filter->context);
+	std::string newGpuDevice = obs_data_get_string(settings, S_GPU_DEVICE);
+	if (isMaster) {
 		const std::string stored = readStoredProcessingDevice();
 		switch (reconcileShared(!stored.empty(), filter->deviceChoiceSeen,
-                                obs_data_has_user_value(settings, S_GPU_DEVICE), newGpuDevice == stored))
-        {
+					obs_data_has_user_value(settings, S_GPU_DEVICE), newGpuDevice == stored)) {
 		case SharedAction::Adopt:
 			newGpuDevice = stored;
 			obs_data_set_string(settings, S_GPU_DEVICE, stored.c_str());
 			break;
-                
+
 		case SharedAction::Donate:
 			writeStoredProcessingDevice(newGpuDevice);
 			blog(LOG_INFO,
@@ -1117,16 +1097,16 @@ void filterUpdate(void *data, obs_data_t *settings)
 			     "from an existing filter's saved setting",
 			     newGpuDevice.c_str());
 			break;
-                
+
 		case SharedAction::ComputeDefault:
 			newGpuDevice = resolveProcessingDevice();
 			obs_data_set_string(settings, S_GPU_DEVICE, newGpuDevice.c_str());
 			break;
-                
+
 		case SharedAction::Publish:
 			applyProcessingDeviceToAll(newGpuDevice, filter);
 			break;
-                
+
 		case SharedAction::None:
 			break;
 		}
@@ -1135,19 +1115,17 @@ void filterUpdate(void *data, obs_data_t *settings)
 		// Same thing with the model choice (don't worry about ANE as this always follows model)
 		const std::string storedModel = readStoredModelPath();
 		switch (reconcileShared(!storedModel.empty(), filter->modelChoiceSeen,
-                                 obs_data_has_user_value(settings, S_MODEL_PATH), newModel == storedModel))
-        {
+					obs_data_has_user_value(settings, S_MODEL_PATH), newModel == storedModel)) {
 		case SharedAction::Adopt:
 			newModel = storedModel;
 			obs_data_set_string(settings, S_MODEL_PATH, storedModel.c_str());
 			break;
-                
+
 		case SharedAction::Donate:
 			// A filter that has no model has nothing to donate. writeStoredSetting
 			// already discards the empty write; this keeps the log honest too,
 			// instead of announcing that '' is now the plugin-wide model.
-			if (!newModel.empty())
-        {
+			if (!newModel.empty()) {
 				writeStoredModelPath(newModel);
 				blog(LOG_INFO,
 				     "[babelstreamer-filter] Took '%s' from this filter's saved settings "
@@ -1155,19 +1133,17 @@ void filterUpdate(void *data, obs_data_t *settings)
 				     newModel.c_str());
 			}
 			break;
-                
+
 		case SharedAction::Publish:
 			applyModelToAll(newModel, filter);
 			break;
-                
+
 		case SharedAction::ComputeDefault:
 		case SharedAction::None:
 			break;
 		}
 		filter->modelChoiceSeen = true;
-	}
-	else
-	{
+	} else {
 		// Follower: no panel value of ours is ever meaningful, so just mirror
 		// the shared value and keep our own panel in step (it's disabled, but
 		// should still show the truth if the user looks at it).
@@ -1183,30 +1159,33 @@ void filterUpdate(void *data, obs_data_t *settings)
 	int newPartialEvery = (int)obs_data_get_int(settings, S_PARTIAL_EVERY_MS);
 	int newPartialWindow = (int)obs_data_get_int(settings, S_PARTIAL_WINDOW_MS);
 
-
-    // This checks the processor/model combo and if necessary queues a ANE update
-    // prompt. Only relevant for the master: a follower never chose the pairing,
-    // it just mirrors whatever the master already resolved.
+	// This checks the processor/model combo and if necessary queues a ANE update
+	// prompt. Only relevant for the master: a follower never chose the pairing,
+	// it just mirrors whatever the master already resolved.
 	if (isMaster)
 		checkAnePairing(filter, settings, newModel, newGpuDevice);
 
-    
-    // Check if we need a reload
-	bool reloadNeeded = (newModel != filter->modelPath || newLang != filter->sourceLang || newGpuDevice != filter->gpuDeviceId);
+	// Check if we need a reload
+	bool reloadNeeded =
+		(newModel != filter->modelPath || newLang != filter->sourceLang || newGpuDevice != filter->gpuDeviceId);
 
-    // All other data can be changed on the fly without a reload
+	// All other data can be changed on the fly without a reload
 	bool liveChanged = (newCustomVocab != filter->customVocab || newFrameMs != filter->vadFrameMs ||
 			    newSpeechMs != filter->vadSpeechMs || newSilenceMs != filter->vadSilenceMs ||
 			    newMaxUtteranceMs != filter->maxUtteranceMs || newPartialEvery != filter->partialEveryMs ||
-			    newPartialWindow != filter->partialWindowMs || newVadThresholdPct != filter->vadThresholdPct);
+			    newPartialWindow != filter->partialWindowMs ||
+			    newVadThresholdPct != filter->vadThresholdPct);
 
 	// Put the resolved networking settings back into the settings block
-	if (newHost != rawHost) obs_data_set_string(settings, S_WS_HOST, newHost.c_str());
-	if (newPort != rawPort) obs_data_set_int(settings, S_WS_PORT, newPort);
-	if (newUseTls != rawUseTls) obs_data_set_bool(settings, S_WS_USE_TLS, newUseTls);
+	if (newHost != rawHost)
+		obs_data_set_string(settings, S_WS_HOST, newHost.c_str());
+	if (newPort != rawPort)
+		obs_data_set_int(settings, S_WS_PORT, newPort);
+	if (newUseTls != rawUseTls)
+		obs_data_set_bool(settings, S_WS_USE_TLS, newUseTls);
 
 	// Store updates to filter. Networking settings are used by network thread so need mutex
-    filter->modelPath = newModel;
+	filter->modelPath = newModel;
 	filter->sourceLang = newLang.empty() ? DEFAULT_SOURCE_LANG : newLang;
 	filter->customVocab = newCustomVocab;
 	filter->gpuDeviceId = newGpuDevice.empty() ? DEFAULT_GPU_DEVICE : newGpuDevice;
@@ -1218,13 +1197,13 @@ void filterUpdate(void *data, obs_data_t *settings)
 	filter->partialWindowMs = newPartialWindow;
 	filter->vadThresholdPct = newVadThresholdPct;
 	filter->streamGateEnabled.store(newStreamGateEnabled);
-    {
-        std::lock_guard<std::mutex> lk(filter->stateMtx);
-        filter->wsHost = newHost;
-        filter->wsPort = newPort;
-        filter->wsUseTls = newUseTls;
-        filter->deviceToken = newDeviceToken;
-    }
+	{
+		std::lock_guard<std::mutex> lk(filter->stateMtx);
+		filter->wsHost = newHost;
+		filter->wsPort = newPort;
+		filter->wsUseTls = newUseTls;
+		filter->deviceToken = newDeviceToken;
+	}
 
 	// Tell the server handler about the new settings - it decides what to do with them
 	ServerLink::getInstance().serverLinkUpdate(filter->linkId, makeLinkParams(filter));
@@ -1232,22 +1211,16 @@ void filterUpdate(void *data, obs_data_t *settings)
 
 	// Reload the model only when something actually requires it; otherwise
 	// hot-swap the live settings on the running instance.
-	if (reloadNeeded)
-    {
+	if (reloadNeeded) {
 		blog(LOG_INFO, "[babelstreamer-filter] Reloading whisper (model, language or GPU device changed)");
 		requestReload(filter);
-	}
-    else if (!filter->whisper && !filter->modelPath.empty())
-    {
+	} else if (!filter->whisper && !filter->modelPath.empty()) {
 		// A model is configured but isn't loaded, so load it
 		blog(LOG_INFO, "[babelstreamer-filter] Whisper isn't loaded - retrying model load");
 		requestReload(filter);
-	}
-    else if (liveChanged)
-    {
+	} else if (liveChanged) {
 		std::lock_guard<std::mutex> lk(filter->whisperMtx);
-		if (filter->whisper)
-        {
+		if (filter->whisper) {
 			filter->whisper->updateLiveConfig(makeLiveConfig(filter));
 			blog(LOG_INFO, "[babelstreamer-filter] Applied VAD/vocabulary settings without a reload");
 		}
@@ -1256,6 +1229,7 @@ void filterUpdate(void *data, obs_data_t *settings)
 	blog(LOG_INFO,
 	     "[babelstreamer-filter] Settings: ws://%s:%u  lang=%s  gpu_device=%s  "
 	     "frame=%dms  speech=%dms  silence=%dms  max_utterance=%dms  partial=%dms/%dms",
-	     filter->wsHost.c_str(), filter->wsPort, filter->sourceLang.c_str(), filter->gpuDeviceId.c_str(), filter->vadFrameMs, filter->vadSpeechMs,
-	     filter->vadSilenceMs, filter->maxUtteranceMs, filter->partialEveryMs, filter->partialWindowMs);
+	     filter->wsHost.c_str(), filter->wsPort, filter->sourceLang.c_str(), filter->gpuDeviceId.c_str(),
+	     filter->vadFrameMs, filter->vadSpeechMs, filter->vadSilenceMs, filter->maxUtteranceMs,
+	     filter->partialEveryMs, filter->partialWindowMs);
 }

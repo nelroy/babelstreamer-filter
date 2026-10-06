@@ -94,8 +94,7 @@
     Fields crossing those threads are guarded by stateMtx below. Fields NOT so marked are only touched from
     the UI thread (or handed to whisper via Config/callback-capture at rebuild time) and need no lock.
  */
-struct WhisperFilter
-{
+struct WhisperFilter {
 	obs_source_t *context = nullptr;
 
 	std::unique_ptr<WhisperWrapper> whisper; /*! the actuel model */
@@ -108,10 +107,11 @@ struct WhisperFilter
         we need to keep track of this becuase OBS only tells you that settings have changed. Since some settings result in a complete teardown
         and rebuild of the model, which is slow, we need to keep a shadow copy to check what is changed.
      */
-	std::string modelPath;                        /*! shadow model path */
-	bool modelChoiceSeen = false;                 /*! false until a model is actually chosen*/
-	bool reloadQueued = false;                    /*! reload of model queued, don't need to check the rest*/
-	std::string anePairChecked;                   /*! Which model/device pair was checked for Apple neural engine, assures that prompt is once per choice */
+	std::string modelPath;        /*! shadow model path */
+	bool modelChoiceSeen = false; /*! false until a model is actually chosen*/
+	bool reloadQueued = false;    /*! reload of model queued, don't need to check the rest*/
+	std::string
+		anePairChecked; /*! Which model/device pair was checked for Apple neural engine, assures that prompt is once per choice */
 	bool anePairPrimed = false;                   /*! that the ANE choice been looked at at all*/
 	bool anePromptQueued = false;                 /*! true when a prompt to load ANE has been queueud*/
 	bool aneRevertDevice = false;                 /*! which fallback to use if user refuses ANE LOAD*/
@@ -137,8 +137,8 @@ struct WhisperFilter
 	int partialEveryMs = DEFAULT_PARTIAL_EVERY_MS;
 	int partialWindowMs = DEFAULT_PARTIAL_WINDOW_MS;
 	int vadThresholdPct = DEFAULT_VAD_THRESHOLD_PCT; // 0-100, /100 for the wrapper
-	
-    std::string speakerName;    /*! name of speaker for this instance, guarded by stateMtx*/
+
+	std::string speakerName;    /*! name of speaker for this instance, guarded by stateMtx*/
 	std::string textSourceName; /*! name of text source to drive for this instance, guarded by stateMtx */
 	bool showPartials = false;  /*! show partial results in [brackets] - NOTE: this is marked for deprecation */
 	std::string gamePreset;     /*! mirrors S_GAME_PRESET (*/

@@ -29,24 +29,23 @@ constexpr const char *kFilterId = "whisper_ws_filter";
 // Production origin, used when no filter has a server address configured yet.
 constexpr const char *kDefaultOrigin = "https://babelstreamer.com";
 
-
 // Get the first filter - which will also be the master filter
 // findFirstFilter is the callback for obs_source_enum_filters
 void findFirstFilter(obs_source_t *, obs_source_t *filter, void *param)
 {
 	auto *found = static_cast<obs_source_t **>(param);
-	if (*found)	return;
+	if (*found)
+		return;
 	const char *id = obs_source_get_id(filter);
-	if (id && std::strcmp(id, kFilterId) == 0)	*found = filter;
+	if (id && std::strcmp(id, kFilterId) == 0)
+		*found = filter;
 }
-
 
 obs_source_t *firstFilterSource()
 {
 	obs_source_t *found = nullptr;
 	obs_enum_sources(
-		[](void *param, obs_source_t *src) -> bool
-                     {
+		[](void *param, obs_source_t *src) -> bool {
 			obs_source_enum_filters(src, findFirstFilter, param);
 			return !*static_cast<obs_source_t **>(param); // stop once found
 		},
@@ -56,20 +55,18 @@ obs_source_t *firstFilterSource()
 
 } // namespace
 
-
 QString resolveFilterOrigin()
 {
 	obs_source_t *filter = firstFilterSource();
-	if (!filter) return QString::fromUtf8(kDefaultOrigin);
+	if (!filter)
+		return QString::fromUtf8(kDefaultOrigin);
 
 	obs_data_t *settings = obs_source_get_settings(filter);
 	QString host = QString::fromUtf8(obs_data_get_string(settings, S_WS_HOST)).trimmed();
 	// parseWsHostInput() normally stores a bare host, but strip a scheme
 	// defensively in case an older saved value still carries one.
-	for (const char *prefix : {"wss://", "ws://", "https://", "http://"})
-    {
-		if (host.startsWith(QLatin1String(prefix), Qt::CaseInsensitive))
-        {
+	for (const char *prefix : {"wss://", "ws://", "https://", "http://"}) {
+		if (host.startsWith(QLatin1String(prefix), Qt::CaseInsensitive)) {
 			host = host.mid(int(std::strlen(prefix)));
 			break;
 		}
@@ -79,12 +76,14 @@ QString resolveFilterOrigin()
 	const bool tls = obs_data_get_bool(settings, S_WS_USE_TLS);
 	obs_data_release(settings);
 
-	if (host.isEmpty()) return QString::fromUtf8(kDefaultOrigin);
+	if (host.isEmpty())
+		return QString::fromUtf8(kDefaultOrigin);
 
 	const QString scheme = tls ? QStringLiteral("https") : QStringLiteral("http");
 	const int defaultPort = tls ? 443 : 80;
 	QString authority = host;
-	if (port > 0 && port != defaultPort) authority += QStringLiteral(":%1").arg(port);
+	if (port > 0 && port != defaultPort)
+		authority += QStringLiteral(":%1").arg(port);
 	return QStringLiteral("%1://%2").arg(scheme, authority);
 }
 

@@ -68,8 +68,7 @@ void requestReload(WhisperFilter *f);
  */
 void requestReloadAll();
 
-enum class SharedAction
-{
+enum class SharedAction {
 	None,           /*! panel already agrees with the plugin-wide value */
 	Adopt,          /*! take the stored value and write it back into this panel */
 	Donate,         /*! nothing stored yet; this filter's saved choice becomes it */

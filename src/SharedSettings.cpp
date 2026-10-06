@@ -14,7 +14,7 @@
 
 #include "SharedSettings.hpp"
 #include "ModelDownloadDialog.hpp" // runOnUiThreadLater
-#include "WhisperFilter.hpp"      // WhisperFilter
+#include "WhisperFilter.hpp"       // WhisperFilter
 #include "WhisperEngine.hpp"       // startWhisper, isAppleSilicon
 
 #include <obs-module.h>
@@ -25,11 +25,9 @@
 #include <mutex>
 #include <vector>
 
-
-namespace
-{
-    std::mutex filtersMtx;
-    std::vector<WhisperFilter *> filterList;
+namespace {
+std::mutex filtersMtx;
+std::vector<WhisperFilter *> filterList;
 } // namespace
 
 void registerFilter(WhisperFilter *filter)
@@ -59,7 +57,8 @@ WhisperFilter *firstRegisteredFilter()
 static std::string sharedSettingPath(const char *name)
 {
 	char *dir = obs_module_config_path(nullptr);
-	if (!dir) return {};
+	if (!dir)
+		return {};
 	std::string path(dir);
 	bfree(dir);
 	if (!path.empty() && path.back() != '/' && path.back() != '\\')
@@ -74,7 +73,8 @@ static std::string readStoredSetting(const char *name)
 	if (path.empty())
 		return {};
 	std::ifstream in(path, std::ios::binary);
-	if (!in) return {};
+	if (!in)
+		return {};
 	std::string value((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 	while (!value.empty() &&
 	       (value.back() == '\n' || value.back() == '\r' || value.back() == ' ' || value.back() == '\t'))
@@ -84,15 +84,16 @@ static std::string readStoredSetting(const char *name)
 
 static void writeStoredSetting(const char *name, const std::string &value)
 {
-	if (value.empty()) return;
+	if (value.empty())
+		return;
 	char *dir = obs_module_config_path(nullptr);
-	if (dir)
-    {
+	if (dir) {
 		os_mkdirs(dir);
 		bfree(dir);
 	}
 	const std::string path = sharedSettingPath(name);
-	if (path.empty()) return;
+	if (path.empty())
+		return;
 	std::ofstream out(path, std::ios::binary | std::ios::trunc);
 	if (out)
 		out << value;
@@ -103,12 +104,11 @@ static void writeStoredSetting(const char *name, const std::string &value)
 
 // In-memory copy of the two plugin-wide settings,available
 // as reference to all plugin instances via the read and write functions
-namespace
-{
-    bool deviceCacheLoaded = false;
-    std::string cachedDevice;
-    bool modelCacheLoaded = false;
-    std::string cachedModel;
+namespace {
+bool deviceCacheLoaded = false;
+std::string cachedDevice;
+bool modelCacheLoaded = false;
+std::string cachedModel;
 } // namespace
 
 std::string readStoredProcessingDevice()
@@ -158,15 +158,15 @@ void writeStoredModelPath(const std::string &path)
  */
 SharedAction reconcileShared(bool haveStored, bool seenBefore, bool panelHasUserValue, bool panelMatchesStored)
 {
-	if (!seenBefore)
-    {
-		if (haveStored) return panelMatchesStored ? SharedAction::None : SharedAction::Adopt;
-		if (panelHasUserValue) return SharedAction::Donate;
+	if (!seenBefore) {
+		if (haveStored)
+			return panelMatchesStored ? SharedAction::None : SharedAction::Adopt;
+		if (panelHasUserValue)
+			return SharedAction::Donate;
 		return SharedAction::ComputeDefault;
 	}
 	return panelMatchesStored ? SharedAction::None : SharedAction::Publish;
 }
-
 
 /*
     Filters will all need to be reloaded when a key shared setting is updated.
@@ -179,16 +179,16 @@ static void reloadFilterTask(void *param)
 {
 	auto *filter = static_cast<WhisperFilter *>(param);
 
-    // If filter is still registered then the pointer will still be valid
-    // Check needed because filter may have been deleted
-	if (!filterStillRegistered(filter))
-    {
+	// If filter is still registered then the pointer will still be valid
+	// Check needed because filter may have been deleted
+	if (!filterStillRegistered(filter)) {
 		blog(LOG_INFO, "[babelstreamer-filter] Skipping a queued rebuild for a filter that is gone");
 		return;
 	}
 
 	filter->reloadQueued = false;
-	if (filter->modelPath.empty()) return;
+	if (filter->modelPath.empty())
+		return;
 
 	std::lock_guard<std::mutex> lock(filter->whisperMtx);
 	filter->whisper.reset(); // stop() runs in the destructor
@@ -196,14 +196,14 @@ static void reloadFilterTask(void *param)
 	startWhisper(filter); // picks up the current settings via makeLiveConfig()
 }
 
-
 /*
     Reload of filter deferred. Check that a reload isn't already in
     propgress before triggering
 */
 void requestReload(WhisperFilter *filter)
 {
-	if (filter->reloadQueued) return;
+	if (filter->reloadQueued)
+		return;
 	filter->reloadQueued = true;
 	runOnUiThreadLater([filter] { reloadFilterTask(filter); });
 }
@@ -230,11 +230,11 @@ void requestReloadAll()
 std::string resolveProcessingDevice()
 {
 	const std::string stored = readStoredProcessingDevice();
-	if (!stored.empty()) return stored;
+	if (!stored.empty())
+		return stored;
 #if HAS_WHISPER_COREML
 	// On Apple Silicon default to the Neural Engine
-	if (isAppleSilicon())
-    {
+	if (isAppleSilicon()) {
 		writeStoredProcessingDevice(ANE_DEVICE_ID);
 		return ANE_DEVICE_ID;
 	}
@@ -263,17 +263,16 @@ void applyProcessingDeviceToAll(const std::string &device, WhisperFilter *origin
 			if (other != origin && other->gpuDeviceId != device)
 				otherFilters.push_back(other);
 	}
-	if (otherFilters.empty()) return;
+	if (otherFilters.empty())
+		return;
 
 	blog(LOG_INFO, "[babelstreamer-filter] Processing device is now '%s' - reloading %zu other filter(s)",
-         device.c_str(), otherFilters.size());
-    
-	for (WhisperFilter *otherFilter : otherFilters)
-    {
+	     device.c_str(), otherFilters.size());
+
+	for (WhisperFilter *otherFilter : otherFilters) {
 		otherFilter->gpuDeviceId = device;
 		// Keep that filter's saved settings in step for its properties panel
-		if (obs_data_t *otherSettings = obs_source_get_settings(otherFilter->context))
-        {
+		if (obs_data_t *otherSettings = obs_source_get_settings(otherFilter->context)) {
 			obs_data_set_string(otherSettings, S_GPU_DEVICE, device.c_str());
 			obs_data_release(otherSettings);
 		}
@@ -326,25 +325,22 @@ void applyModelToAll(const std::string &modelPath, WhisperFilter *masterFilter)
 	std::vector<WhisperFilter *> otherFilters;
 	{
 		std::lock_guard<std::mutex> lockk(filtersMtx);
-		for (WhisperFilter *otherFilter : filterList)
-        {
-            if (otherFilter != masterFilter && otherFilter->modelPath != modelPath)
-            {
-                otherFilters.push_back(otherFilter);
-            }
-        }
+		for (WhisperFilter *otherFilter : filterList) {
+			if (otherFilter != masterFilter && otherFilter->modelPath != modelPath) {
+				otherFilters.push_back(otherFilter);
+			}
+		}
 	}
-	if (otherFilters.empty()) return;
+	if (otherFilters.empty())
+		return;
 
 	blog(LOG_INFO, "[babelstreamer-filter] Model is now '%s' - reloading %zu other filter(s)", modelPath.c_str(),
 	     otherFilters.size());
-	
-    for (WhisperFilter *other : otherFilters)
-    {
+
+	for (WhisperFilter *other : otherFilters) {
 		other->modelPath = modelPath;
 		// Keep that filter's saved settings in step for the properties panel
-		if (obs_data_t *otherSettings = obs_source_get_settings(other->context))
-        {
+		if (obs_data_t *otherSettings = obs_source_get_settings(other->context)) {
 			obs_data_set_string(otherSettings, S_MODEL_PATH, modelPath.c_str());
 			obs_data_release(otherSettings);
 		}

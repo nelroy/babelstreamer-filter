@@ -50,8 +50,6 @@
 #include <vector>
 #include <whisper.h>
 
-
-
 /**
     Backend types
  */
@@ -174,7 +172,6 @@ public:
 		whisper_context *context = nullptr;
 	}; // end of Lease
 
-
 	/**
         Wait for a lease (exclusive access) to a model context, with potential cancel during wait
      
@@ -243,8 +240,7 @@ public:
         The free-text vocabulary/name hints (e.g. streamer name, game titles, is fed to whisper to bias
         speech recognition to a specific vocab.
      */
-	struct LiveConfig
-    {
+	struct LiveConfig {
 		int vad_frame_ms = 20;        /*! VAD analysis frame size */
 		int vad_min_speech_ms = 120;  /*! minimum speech run to start utterance */
 		int vad_end_silence_ms = 260; /*! trailing silence to end utterance */
@@ -259,8 +255,7 @@ public:
         Structure for maintaining all configurable settings including those that cannot be updated live. Update of these
         settings requires a new WhisperWrapper object (LiveConfig can be updated separately without reload)
      */
-	struct Config
-    {
+	struct Config {
 		std::string model_path; /*! Path to Whisper model local*/
 		std::string gpu_device_id =
 			"auto"; /*! Device to run model - available devices returned by listAvailableDevices */

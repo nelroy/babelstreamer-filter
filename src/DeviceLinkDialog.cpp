@@ -46,8 +46,7 @@ using namespace brandpalette;
 /**
     Pimpl to hide main dialogue methods
  */
-class Pimpl : public QDialog
-{
+class Pimpl : public QDialog {
 public:
 	Pimpl(QWidget *parent, const QString &apiBase) : QDialog(parent)
 	{

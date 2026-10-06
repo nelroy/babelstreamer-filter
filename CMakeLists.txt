@@ -5,9 +5,10 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCO
 project(${_name} VERSION ${_version})
 
 option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" OFF)
-option(PLUGIN_STANDALONE_XCODE
-       "Generate a minimal single-target Xcode project (no install/package/plugin-support targets) for manual signing and notarization via Xcode"
-       OFF
+option(
+  PLUGIN_STANDALONE_XCODE
+  "Generate a minimal single-target Xcode project (no install/package/plugin-support targets) for manual signing and notarization via Xcode"
+  OFF
 )
 
 include(compilerconfig)
@@ -46,8 +47,7 @@ if(APPLE)
   # actual system AGL.framework at runtime, same as before Qt. Passed as an
   # explicit link option (rather than CMAKE_FRAMEWORK_PATH) so it lands on
   # this target's own search paths under the Xcode generator too.
-  target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
-    "-F${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/stubs")
+  target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-F${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/stubs")
 endif()
 target_compile_options(
   ${CMAKE_PROJECT_NAME}
@@ -57,16 +57,25 @@ set_target_properties(
   ${CMAKE_PROJECT_NAME}
   PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
 )
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/BrandedPopup.cpp src/DeviceLinkDialog.cpp src/FilterOrigin.cpp src/FilterProperties.cpp src/GameVocab.cpp src/ModelDownloadDialog.cpp src/ServerLink.cpp src/SharedSettings.cpp src/UpdateChecker.cpp src/WhisperEngine.cpp)
+target_sources(
+  ${CMAKE_PROJECT_NAME}
+  PRIVATE
+    src/BrandedPopup.cpp
+    src/DeviceLinkDialog.cpp
+    src/FilterOrigin.cpp
+    src/FilterProperties.cpp
+    src/GameVocab.cpp
+    src/ModelDownloadDialog.cpp
+    src/ServerLink.cpp
+    src/SharedSettings.cpp
+    src/UpdateChecker.cpp
+    src/WhisperEngine.cpp
+)
 
 # ── Plugin sources ────────────────────────────────────────────────────────────
-target_sources(${CMAKE_PROJECT_NAME}
-  PRIVATE
-    src/TranslatorPlugin.cpp
-    src/WhisperFilter.cpp
-    src/WebSocketClient.cpp
-    src/WhisperWrapper.cpp
-    src/sha256.cpp
+target_sources(
+  ${CMAKE_PROJECT_NAME}
+  PRIVATE src/TranslatorPlugin.cpp src/WhisperFilter.cpp src/WebSocketClient.cpp src/WhisperWrapper.cpp src/sha256.cpp
 )
 
 # ── Require C++17 ─────────────────────────────────────────────────────────────
@@ -87,11 +96,12 @@ if(TARGET MbedTLS::mbedtls)
   target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE MbedTLS::mbedtls)
 else()
   find_path(MBEDTLS_INCLUDE_DIR mbedtls/ssl.h PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES include)
-  find_library(MBEDTLS_LIB    NAMES mbedtls    PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES lib)
-  find_library(MBEDX509_LIB   NAMES mbedx509   PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES lib)
+  find_library(MBEDTLS_LIB NAMES mbedtls PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES lib)
+  find_library(MBEDX509_LIB NAMES mbedx509 PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES lib)
   find_library(MBEDCRYPTO_LIB NAMES mbedcrypto PATHS ${CMAKE_PREFIX_PATH} PATH_SUFFIXES lib)
   if(NOT MBEDTLS_INCLUDE_DIR OR NOT MBEDTLS_LIB OR NOT MBEDX509_LIB OR NOT MBEDCRYPTO_LIB)
-    message(FATAL_ERROR
+    message(
+      FATAL_ERROR
       "mbedTLS not found (needed for wss:// support in WebSocketClient.cpp) - "
       "expected headers/libs under one of CMAKE_PREFIX_PATH's entries: ${CMAKE_PREFIX_PATH}"
     )
@@ -115,85 +125,104 @@ else()
   set(_whisper_root_default "$ENV{HOME}/Projects/whisper")
 endif()
 
-set(WHISPER_ROOT "${_whisper_root_default}" CACHE PATH
-    "Root of the whisper.cpp checkout.  macOS/Linux: the install prefix \
+set(
+  WHISPER_ROOT
+  "${_whisper_root_default}"
+  CACHE PATH
+  "Root of the whisper.cpp checkout.  macOS/Linux: the install prefix \
 (contains lib/cmake/whisper/).  Windows: the repo root \
-(build/ sub-directory must contain the compiled libs).")
+(build/ sub-directory must contain the compiled libs)."
+)
 
 if(MSVC)
   # ── Windows: link directly from the build tree - no install required ───────
   # Headers come from the source tree directly.
-  target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    "${WHISPER_ROOT}/include"
-    "${WHISPER_ROOT}/ggml/include"
-  )
+  target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${WHISPER_ROOT}/include" "${WHISPER_ROOT}/ggml/include")
 
   # Per-configuration .lib paths via generator expressions.
   # Each VS configuration picks its own correctly-CRT-matched lib.
   # whisper.lib lives in <build>\src\<config>\
   set(_wb_whisper "${WHISPER_ROOT}/Windows/src")
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-    "$<$<CONFIG:Debug>:${_wb_whisper}/Debug/whisper.lib>"
-    "$<$<CONFIG:Release>:${_wb_whisper}/Release/whisper.lib>"
-    "$<$<CONFIG:RelWithDebInfo>:${_wb_whisper}/RelWithDebInfo/whisper.lib>"
-    "$<$<CONFIG:MinSizeRel>:${_wb_whisper}/MinSizeRel/whisper.lib>"
+  target_link_libraries(
+    ${CMAKE_PROJECT_NAME}
+    PRIVATE
+      "$<$<CONFIG:Debug>:${_wb_whisper}/Debug/whisper.lib>"
+      "$<$<CONFIG:Release>:${_wb_whisper}/Release/whisper.lib>"
+      "$<$<CONFIG:RelWithDebInfo>:${_wb_whisper}/RelWithDebInfo/whisper.lib>"
+      "$<$<CONFIG:MinSizeRel>:${_wb_whisper}/MinSizeRel/whisper.lib>"
   )
   # ggml libs live in <build>\ggml\src\<config>\
   set(_wb_ggml "${WHISPER_ROOT}/Windows/ggml/src")
   foreach(_lib ggml ggml-base ggml-cpu)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-      "$<$<CONFIG:Debug>:${_wb_ggml}/Debug/${_lib}.lib>"
-      "$<$<CONFIG:Release>:${_wb_ggml}/Release/${_lib}.lib>"
-      "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml}/RelWithDebInfo/${_lib}.lib>"
-      "$<$<CONFIG:MinSizeRel>:${_wb_ggml}/MinSizeRel/${_lib}.lib>"
+    target_link_libraries(
+      ${CMAKE_PROJECT_NAME}
+      PRIVATE
+        "$<$<CONFIG:Debug>:${_wb_ggml}/Debug/${_lib}.lib>"
+        "$<$<CONFIG:Release>:${_wb_ggml}/Release/${_lib}.lib>"
+        "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml}/RelWithDebInfo/${_lib}.lib>"
+        "$<$<CONFIG:MinSizeRel>:${_wb_ggml}/MinSizeRel/${_lib}.lib>"
     )
   endforeach()
 
   # Optional GPU backends - set via CMakePresets.json or -DWHISPER_HAS_CUDA=1 etc.
-  set(WHISPER_HAS_CUDA   0 CACHE STRING "1 if whisper was built with CUDA")
-  set(WHISPER_HAS_HIP    0 CACHE STRING "1 if whisper was built with HIP (ROCm)")
+  set(WHISPER_HAS_CUDA 0 CACHE STRING "1 if whisper was built with CUDA")
+  set(WHISPER_HAS_HIP 0 CACHE STRING "1 if whisper was built with HIP (ROCm)")
   set(WHISPER_HAS_VULKAN 0 CACHE STRING "1 if whisper was built with Vulkan")
 
   # ggml's HIP backend is the CUDA backend recompiled with hipcc - it exports the
   # same ggml_backend_cuda_* symbols from ggml-hip.lib instead of ggml-cuda.lib,
   # so the two cannot coexist in one binary.
   if(WHISPER_HAS_CUDA AND WHISPER_HAS_HIP)
-    message(FATAL_ERROR "WHISPER_HAS_CUDA and WHISPER_HAS_HIP are mutually exclusive (both export ggml_backend_cuda_* symbols). Pick one.")
+    message(
+      FATAL_ERROR
+      "WHISPER_HAS_CUDA and WHISPER_HAS_HIP are mutually exclusive (both export ggml_backend_cuda_* symbols). Pick one."
+    )
   endif()
 
   if(WHISPER_HAS_CUDA)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-      "$<$<CONFIG:Debug>:${_wb_ggml}/Debug/ggml-cuda.lib>"
-      "$<$<CONFIG:Release>:${_wb_ggml}/Release/ggml-cuda.lib>"
-      "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml}/RelWithDebInfo/ggml-cuda.lib>"
-      "$<$<CONFIG:MinSizeRel>:${_wb_ggml}/MinSizeRel/ggml-cuda.lib>"
+    target_link_libraries(
+      ${CMAKE_PROJECT_NAME}
+      PRIVATE
+        "$<$<CONFIG:Debug>:${_wb_ggml}/Debug/ggml-cuda.lib>"
+        "$<$<CONFIG:Release>:${_wb_ggml}/Release/ggml-cuda.lib>"
+        "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml}/RelWithDebInfo/ggml-cuda.lib>"
+        "$<$<CONFIG:MinSizeRel>:${_wb_ggml}/MinSizeRel/ggml-cuda.lib>"
     )
     # CUDA runtime - needed when ggml-cuda.lib is a static library.
-    set(CUDA_CUDART_LIB "" CACHE FILEPATH
-        "Path to cudart_static.lib. Only needed when building on a machine \
+    set(
+      CUDA_CUDART_LIB
+      ""
+      CACHE FILEPATH
+      "Path to cudart_static.lib. Only needed when building on a machine \
 with no local CUDA Toolkit install (e.g. ggml-cuda.lib was cross-built \
 elsewhere and copied in) - copy cudart_static.lib from that machine's \
-CUDA Toolkit lib\\x64 directory and point this at it.")
+CUDA Toolkit lib\\x64 directory and point this at it."
+    )
     find_package(CUDAToolkit QUIET)
     if(CUDAToolkit_FOUND)
       target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE CUDA::cudart_static)
     elseif(CUDA_CUDART_LIB)
       target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE "${CUDA_CUDART_LIB}")
     else()
-      message(WARNING "WHISPER_HAS_CUDA is set but no CUDA Toolkit was found "
+      message(
+        WARNING
+        "WHISPER_HAS_CUDA is set but no CUDA Toolkit was found "
         "and CUDA_CUDART_LIB is not set - the link step will likely fail "
         "with unresolved cuda*/cublas* symbols. Set -DCUDA_CUDART_LIB=<path "
-        "to cudart_static.lib> when building without the toolkit installed.")
+        "to cudart_static.lib> when building without the toolkit installed."
+      )
     endif()
   endif()
 
   if(WHISPER_HAS_HIP)
     set(_wb_ggml_hip "${WHISPER_ROOT}/Windows/ggml/src/ggml-hip")
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-      "$<$<CONFIG:Debug>:${_wb_ggml_hip}/Debug/ggml-hip.lib>"
-      "$<$<CONFIG:Release>:${_wb_ggml_hip}/Release/ggml-hip.lib>"
-      "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml_hip}/RelWithDebInfo/ggml-hip.lib>"
-      "$<$<CONFIG:MinSizeRel>:${_wb_ggml_hip}/MinSizeRel/ggml-hip.lib>"
+    target_link_libraries(
+      ${CMAKE_PROJECT_NAME}
+      PRIVATE
+        "$<$<CONFIG:Debug>:${_wb_ggml_hip}/Debug/ggml-hip.lib>"
+        "$<$<CONFIG:Release>:${_wb_ggml_hip}/Release/ggml-hip.lib>"
+        "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml_hip}/RelWithDebInfo/ggml-hip.lib>"
+        "$<$<CONFIG:MinSizeRel>:${_wb_ggml_hip}/MinSizeRel/ggml-hip.lib>"
     )
     # HIP runtime (ROCm) - needed when ggml-hip.lib is a static library
     find_package(hip QUIET)
@@ -206,11 +235,13 @@ CUDA Toolkit lib\\x64 directory and point this at it.")
 
   if(WHISPER_HAS_VULKAN)
     set(_wb_ggml_vk "${WHISPER_ROOT}/Windows/ggml/src/ggml-vulkan")
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-      "$<$<CONFIG:Debug>:${_wb_ggml_vk}/Debug/ggml-vulkan.lib>"
-      "$<$<CONFIG:Release>:${_wb_ggml_vk}/Release/ggml-vulkan.lib>"
-      "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml_vk}/RelWithDebInfo/ggml-vulkan.lib>"
-      "$<$<CONFIG:MinSizeRel>:${_wb_ggml_vk}/MinSizeRel/ggml-vulkan.lib>"
+    target_link_libraries(
+      ${CMAKE_PROJECT_NAME}
+      PRIVATE
+        "$<$<CONFIG:Debug>:${_wb_ggml_vk}/Debug/ggml-vulkan.lib>"
+        "$<$<CONFIG:Release>:${_wb_ggml_vk}/Release/ggml-vulkan.lib>"
+        "$<$<CONFIG:RelWithDebInfo>:${_wb_ggml_vk}/RelWithDebInfo/ggml-vulkan.lib>"
+        "$<$<CONFIG:MinSizeRel>:${_wb_ggml_vk}/MinSizeRel/ggml-vulkan.lib>"
     )
     # Vulkan loader
     find_package(Vulkan QUIET)
@@ -221,13 +252,14 @@ CUDA Toolkit lib\\x64 directory and point this at it.")
     endif()
   endif()
 
-  target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    HAS_GGML_CUDA=${WHISPER_HAS_CUDA}
-    HAS_GGML_HIP=${WHISPER_HAS_HIP}
-    HAS_GGML_VULKAN=${WHISPER_HAS_VULKAN}
-    HAS_WHISPER_COREML=0  # Core ML / ANE is macOS-only; never available on Windows
+  target_compile_definitions(
+    ${CMAKE_PROJECT_NAME}
+    PRIVATE
+      HAS_GGML_CUDA=${WHISPER_HAS_CUDA}
+      HAS_GGML_HIP=${WHISPER_HAS_HIP}
+      HAS_GGML_VULKAN=${WHISPER_HAS_VULKAN}
+      HAS_WHISPER_COREML=0 # Core ML / ANE is macOS-only; never available on Windows
   )
-
 else()
   # ── macOS / Linux: use cmake packages from the install prefix ─────────────
   set(_whisper_prefix "${WHISPER_ROOT}")
@@ -269,8 +301,10 @@ else()
   # frameworks src/coreml/whisper-encoder.mm references.
   set(_whisper_coreml_lib "${_whisper_prefix}/lib/libwhisper.coreml.a")
   if(APPLE AND EXISTS "${_whisper_coreml_lib}")
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-      "${_whisper_coreml_lib}" "-framework CoreML" "-framework Foundation")
+    target_link_libraries(
+      ${CMAKE_PROJECT_NAME}
+      PRIVATE "${_whisper_coreml_lib}" "-framework CoreML" "-framework Foundation"
+    )
     target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE HAS_WHISPER_COREML=1)
     message(STATUS "[babelstreamer] Core ML encoder enabled (${_whisper_coreml_lib})")
   else()
@@ -298,8 +332,10 @@ endif()
 # calls use come from; verify this resolves cleanly on both the Xcode-generator
 # build and the macos-ci preset before relying on it.
 if(APPLE)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-    "-framework IOKit" "-framework Security" "-framework CoreFoundation")
+  target_link_libraries(
+    ${CMAKE_PROJECT_NAME}
+    PRIVATE "-framework IOKit" "-framework Security" "-framework CoreFoundation"
+  )
 endif()
 
 # ── OBS plugin packaging ──────────────────────────────────────────────────────

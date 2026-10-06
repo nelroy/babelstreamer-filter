@@ -35,7 +35,6 @@
 #include <stdexcept>
 #include <sstream> // Added include as per instruction
 
-
 extern "C" {
 #include "ggml-backend.h"
 }
@@ -84,7 +83,6 @@ extern "C" {
 #undef HAS_GGML_VULKAN
 #define HAS_GGML_VULKAN 0
 #endif
-
 
 // Note: does not include Neural Engine, as this is dealt with separately
 
@@ -623,7 +621,6 @@ void WhisperWrapper::pushAudio16k(const float *samples, int n_samples)
 	}
 }
 
-
 /*
  
     We use a per rocess-global registry of loaded models, keyed on (path, device).
@@ -1130,8 +1127,7 @@ void WhisperWrapper::run_loop()
 			is_speech = (energy_rms > std::max(kEnergyAbsFloor, noise_floor * kEnergyMult));
 		}
 
-		if (!in_speech)
-        {
+		if (!in_speech) {
 			/*
                 For the fallback speech detection - slowly adapt to the ambient sound.
                 Only run when not in speech to avoid classification errors
@@ -1170,20 +1166,15 @@ void WhisperWrapper::run_loop()
 					// the audio timeline is just the difference.
 					utteranceStartSamples = samplesConsumed - (int64_t)utterance.size();
 				}
-			}
-            else if (speech_ms > 0)
-            {
+			} else if (speech_ms > 0) {
 				// Already mid-run: tolerate a brief dip instead of resetting immediately (see speech_hangover_ms above).
 				speech_gap_ms += frame_ms;
-				if (speech_gap_ms > speech_hangover_ms)
-                {
+				if (speech_gap_ms > speech_hangover_ms) {
 					speech_ms = 0;
 					speech_gap_ms = 0;
 				}
 			}
-		}
-        else
-        {
+		} else {
 			/*
                 this is the bit when we already in speech. Now we have to decide if we have
                 enough speech to send to the model to be recognised
@@ -1192,14 +1183,12 @@ void WhisperWrapper::run_loop()
 			utterance.insert(utterance.end(), frame.begin(), frame.end());
 
 			// partial update
-			if (live.partial_every_ms > 0)
-            {
+			if (live.partial_every_ms > 0) {
 				const auto now = std::chrono::steady_clock::now();
 				const auto dt =
 					std::chrono::duration_cast<std::chrono::milliseconds>(now - last_partial)
 						.count();
-				if (dt >= live.partial_every_ms)
-                {
+				if (dt >= live.partial_every_ms) {
 					last_partial = now;
 
 					const int win_samples = (live.partial_window_ms * WHISPER_SAMPLE_RATE) / 1000;
@@ -1222,12 +1211,10 @@ void WhisperWrapper::run_loop()
 			const bool lengthCap = max_utterance_samples > 0 &&
 					       (int)utterance.size() >= max_utterance_samples;
 
-			if (naturalEnd || lengthCap)
-            {
+			if (naturalEnd || lengthCap) {
 				// Relax whisper's no-speech gate only on a forced split as above
 				std::string final_txt = transcribe(utterance, live, false, !naturalEnd);
-				if (!final_txt.empty())
-                {
+				if (!final_txt.empty()) {
 					/*
                         naturalEnd's utterance buffer includes the trailing silence that
                         confirmed it (vad_end_silence_ms worth). Subtract it back off so end_ms
@@ -1248,8 +1235,7 @@ void WhisperWrapper::run_loop()
 				last_partial_text.clear();
 				last_partial = std::chrono::steady_clock::now();
 
-				if (naturalEnd)
-                {
+				if (naturalEnd) {
 					utterance.clear();
 					in_speech = false;
 					speech_ms = 0;

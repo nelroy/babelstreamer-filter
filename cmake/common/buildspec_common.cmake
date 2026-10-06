@@ -209,10 +209,7 @@ function(_check_dependencies)
             set(_obs_extract_ok TRUE)
             break()
           endif()
-          message(
-            WARNING
-            "Extracting ${label} looks incomplete (attempt ${_obs_extract_attempt}/3) — retrying"
-          )
+          message(WARNING "Extracting ${label} looks incomplete (attempt ${_obs_extract_attempt}/3) — retrying")
           file(REMOVE_RECURSE "${dependencies_dir}/${destination}")
         endforeach()
         if(NOT _obs_extract_ok)

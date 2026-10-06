@@ -20,7 +20,7 @@
 #include "WhisperEngine.hpp"
 #include "ModelDownloadDialog.hpp" // coremlEncoderNameFor's declaration lives here
 #include "ServerLink.hpp"          // serverLinkEnqueue
-#include "WhisperFilter.hpp"      // WhisperFilter, updateTextSource, settings keys
+#include "WhisperFilter.hpp"       // WhisperFilter, updateTextSource, settings keys
 
 #include <obs-module.h>
 #include <util/platform.h>
@@ -52,22 +52,14 @@
     returns formatted JSON string
 
  */
-static std::string makeJson ( const std::string &text,
-                              bool isFinal,
-                              const std::string &language,
-                              const std::string &game,
-                              const std::string &speaker,
-                              int64_t startMs,
-                              int64_t endMs
-                             )
+static std::string makeJson(const std::string &text, bool isFinal, const std::string &language, const std::string &game,
+			    const std::string &speaker, int64_t startMs, int64_t endMs)
 {
 	// handle escaping of characters
-	auto escape = [](const std::string &s)
-    {
+	auto escape = [](const std::string &s) {
 		std::string out;
 		out.reserve(s.size() + 4);
-		for (char nextChar : s)
-        {
+		for (char nextChar : s) {
 			if (nextChar == '"')
 				out += "\\\"";
 			else if (nextChar == '\\')
@@ -83,18 +75,18 @@ static std::string makeJson ( const std::string &text,
 	};
 
 	std::ostringstream result;
-	result  << "{"
-            << "\"type\":\"transcript\","
-            << "\"text\":\"" << escape (text) << "\","
-            << "\"is_final\":" << (isFinal ? "true" : "false") << ","
-            << "\"lang\":\"" << escape(language) << "\","
-            << "\"game\":\"" << escape(game) << "\"";
+	result << "{"
+	       << "\"type\":\"transcript\","
+	       << "\"text\":\"" << escape(text) << "\","
+	       << "\"is_final\":" << (isFinal ? "true" : "false") << ","
+	       << "\"lang\":\"" << escape(language) << "\","
+	       << "\"game\":\"" << escape(game) << "\"";
 
 	// speaker omitted entirely if not given
-	if (!speaker.empty()) result << ",\"speaker\":\"" << escape(speaker) << "\"";
+	if (!speaker.empty())
+		result << ",\"speaker\":\"" << escape(speaker) << "\"";
 
-	if (isFinal)
-    {
+	if (isFinal) {
 		result << ",\"start_ms\":" << startMs << ",\"end_ms\":" << endMs;
 	}
 	result << "}";
@@ -127,10 +119,11 @@ WhisperWrapper::LiveConfig makeLiveConfig(const WhisperFilter *filter)
     Note that this implies that quantised and turbo and normal models share an encoder,
     since the Core ML encoder is unaffected by quantisation of the decoder weights.
 */
-std::string coremlEncoderNameFor (const std::string &modelPath)
+std::string coremlEncoderNameFor(const std::string &modelPath)
 {
 	std::string stem = std::filesystem::path(modelPath).filename().string();
-	if (auto dot = stem.rfind('.'); dot != std::string::npos) stem = stem.substr(0, dot);
+	if (auto dot = stem.rfind('.'); dot != std::string::npos)
+		stem = stem.substr(0, dot);
 
 	static const std::regex kQuantTag(R"(-q\d_\d$)");
 	stem = std::regex_replace(stem, kQuantTag, "");
@@ -150,8 +143,7 @@ std::string coremlEncoderNameFor (const std::string &modelPath)
 // Apple Silicon implies Apple Neural Engine
 bool isAppleSilicon()
 {
-	static const bool v = []
-    {
+	static const bool v = [] {
 		int val = 0;
 		size_t sz = sizeof(val);
 		if (sysctlbyname("hw.optional.arm64", &val, &sz, nullptr, 0) != 0)
@@ -167,21 +159,18 @@ std::filesystem::path coremlAdjacentPath(const std::string &modelPath)
 	return std::filesystem::path(modelPath).parent_path() / coremlEncoderNameFor(modelPath);
 }
 
-namespace
-{
+namespace {
 
 // This is where we cache our encoders
 std::filesystem::path coremlCachedPath(const std::string &modelPath)
 {
 	std::filesystem::path dir;
-	if (char *c = obs_module_config_path("coreml"))
-    {
+	if (char *c = obs_module_config_path("coreml")) {
 		dir = c;
 		bfree(c);
 	}
 	return dir / coremlEncoderNameFor(modelPath);
 }
-
 
 /*
     Make sure we have a symlink for the ANE encoder in an adjacent directory,
@@ -195,14 +184,14 @@ std::filesystem::path coremlCachedPath(const std::string &modelPath)
  */
 bool ensureCoremlAdjacency(const std::string &modelPath, bool wantAne)
 {
-	if (modelPath.empty()) return false;
-    
+	if (modelPath.empty())
+		return false;
+
 	// make sure that two filters trying this don't race
 	static std::mutex adjacencyMtx;
 	std::lock_guard<std::mutex> adjacencyLk(adjacencyMtx);
 	std::error_code error;
-    
-    
+
 	const auto adjacent = coremlAdjacentPath(modelPath);
 	const auto cached = coremlCachedPath(modelPath);
 
@@ -210,21 +199,19 @@ bool ensureCoremlAdjacency(const std::string &modelPath, bool wantAne)
 	const bool adjIsSymlink = std::filesystem::is_symlink(adjacent, error);
 	const bool adjExists = adjIsSymlink || std::filesystem::exists(adjacent, error);
 
-	if (wantAne && haveCache)
-    {
-		if (adjExists && !adjIsSymlink)
-        {
+	if (wantAne && haveCache) {
+		if (adjExists && !adjIsSymlink) {
 			// A real encoder the user dropped in - respect it, don't override.
 			blog(LOG_INFO, "[babelstreamer-filter] Core ML: using existing encoder at %s",
 			     adjacent.string().c_str());
 			return true;
 		}
-        
-		if (adjIsSymlink) std::filesystem::remove(adjacent, error);
-		
-        std::filesystem::create_directory_symlink(cached, adjacent, error);
-		if (error)
-        {
+
+		if (adjIsSymlink)
+			std::filesystem::remove(adjacent, error);
+
+		std::filesystem::create_directory_symlink(cached, adjacent, error);
+		if (error) {
 			blog(LOG_WARNING,
 			     "[babelstreamer-filter] Core ML: could not link encoder (%s) - "
 			     "falling back to the CPU/Metal encoder",
@@ -239,10 +226,10 @@ bool ensureCoremlAdjacency(const std::string &modelPath, bool wantAne)
 	}
 
 	// ANE off, or no cached encoder: make sure OUR symlink isn't left behind
-	if (adjIsSymlink)
-    {
+	if (adjIsSymlink) {
 		std::filesystem::remove(adjacent, error);
-		blog(LOG_INFO, "[babelstreamer-filter] Core ML/ANE encoder disabled (removed %s)", adjacent.string().c_str());
+		blog(LOG_INFO, "[babelstreamer-filter] Core ML/ANE encoder disabled (removed %s)",
+		     adjacent.string().c_str());
 	}
 	return false;
 }
@@ -287,13 +274,10 @@ void startWhisper(WhisperFilter *filter)
         missing Silero is likely to lead to the model hallucinating and this
         is almost impossible to debug
      */
-	if (char *vadPath = obs_module_file(VAD_MODEL_FILENAME))
-    {
+	if (char *vadPath = obs_module_file(VAD_MODEL_FILENAME)) {
 		cfg.vad_model_path = vadPath;
 		bfree(vadPath);
-	}
-    else
-    {
+	} else {
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] Bundled VAD model '%s' is missing from the "
 		     "plugin's data directory - falling back to the energy VAD, which cannot "
@@ -308,14 +292,14 @@ void startWhisper(WhisperFilter *filter)
 #endif
 
 	try {
-        /*
+		/*
             Create the whisper wrapper. The rest is mainly the callback to deal
             with transcribed text. Capture language by value so we don't worry
             about language updates while the filter is decoding.
          */
-		filter->whisper = std::make_unique<WhisperWrapper>(cfg,
-                    [filter, lang = filter->sourceLang] (const std::string &text, bool isFinal,int64_t startMs, int64_t endMs)
-        {
+		filter->whisper = std::make_unique<WhisperWrapper>(cfg, [filter, lang = filter->sourceLang](
+										const std::string &text, bool isFinal,
+										int64_t startMs, int64_t endMs) {
 			// Overlay settings can change without a whisper rebuild, so
 			// snapshot them under the lock instead of capturing.
 			std::string overlayName;
@@ -331,16 +315,13 @@ void startWhisper(WhisperFilter *filter)
 			}
 
 			// Drive the OBS text source overlay
-			if (isFinal)
-            {
+			if (isFinal) {
 				updateTextSource(overlayName, text);
-			}
-            else if (partialsWanted)
-            {
+			} else if (partialsWanted) {
 				updateTextSource(overlayName, "[" + text + "]");
 			}
 
-            // Add a speaker name to the caption, if >1 speakers
+			// Add a speaker name to the caption, if >1 speakers
 			const std::string speakerToSend =
 				(ServerLink::getInstance().serverLinkActiveCount() > 1) ? speaker : std::string();
 
@@ -350,9 +331,7 @@ void startWhisper(WhisperFilter *filter)
 			blog(LOG_INFO, "[babelstreamer-filter] [%s] %s", isFinal ? "FINAL" : "partial", text.c_str());
 		});
 		blog(LOG_INFO, "[babelstreamer-filter] Whisper loaded: %s", filter->modelPath.c_str());
-	}
-    catch (const std::exception &e)
-    {
+	} catch (const std::exception &e) {
 		blog(LOG_ERROR, "[babelstreamer-filter] Failed to load whisper: %s", e.what());
 		filter->whisper.reset();
 	}

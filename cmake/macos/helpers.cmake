@@ -72,7 +72,8 @@ function(set_target_properties_plugin target)
   add_custom_command(
     TARGET ${target}
     POST_BUILD
-    COMMAND /usr/bin/codesign --force --sign "${CODESIGN_IDENTITY}" ${_tls_backend_sign_flags}
+    COMMAND
+      /usr/bin/codesign --force --sign "${CODESIGN_IDENTITY}" ${_tls_backend_sign_flags}
       "$<TARGET_BUNDLE_DIR:${target}>/Contents/Resources/tls/libqsecuretransportbackend.dylib"
     COMMENT "Signing bundled Qt TLS backend plugin"
     VERBATIM
@@ -102,7 +103,11 @@ function(set_target_properties_plugin target)
     install(FILES "$<TARGET_BUNDLE_DIR:${target}>.dsym" CONFIGURATIONS Release DESTINATION . OPTIONAL)
 
     configure_file(cmake/macos/resources/distribution.in "${CMAKE_CURRENT_BINARY_DIR}/distribution" @ONLY)
-    configure_file(cmake/macos/resources/create-package.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake" @ONLY)
+    configure_file(
+      cmake/macos/resources/create-package.cmake.in
+      "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake"
+      @ONLY
+    )
     install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/create-package.cmake")
   endif()
 endfunction()

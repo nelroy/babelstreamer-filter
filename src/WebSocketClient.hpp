@@ -159,7 +159,7 @@ private:
 	// Mutex to serialise all socket actions
 	mutable std::mutex ioMutex;
 
-	// TLS (wss://) 
+	// TLS (wss://)
 	bool useTls = false;
 	bool tlsInited = false; // whether the mbedtls_*_init() calls below have
 				// run (so tlsTeardown() knows what to free)

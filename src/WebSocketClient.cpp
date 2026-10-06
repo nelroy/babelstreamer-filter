@@ -140,7 +140,6 @@ WebSocketClient::~WebSocketClient()
 #endif
 }
 
-
 /*
     ::connect() with a bounded wait: non-blocking connect, then poll for
     writability, then check SO_ERROR to learn the actual result. The socket is
@@ -373,14 +372,12 @@ bool WebSocketClient::tlsHandshake(const std::string &host, int timeoutMs)
 	// bailout in case you get into a retry loop
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 	int ret;
-	do
-    {
+	do {
 		ret = mbedtls_ssl_handshake(&sslContext);
 	} while ((ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) &&
 		 std::chrono::steady_clock::now() < deadline);
 
-	if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
-    {
+	if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
 		blog(LOG_WARNING, "[babelstreamer-filter] TLS handshake timed out for %s", host.c_str());
 		return false;
 	}
@@ -392,10 +389,11 @@ bool WebSocketClient::tlsHandshake(const std::string &host, int timeoutMs)
 		if (verifyResult != 0 && verifyResult != 0xFFFFFFFFu) {
 			char vbuf[256];
 			mbedtls_x509_crt_verify_info(vbuf, sizeof(vbuf), "", verifyResult);
-			blog(LOG_WARNING, "[babelstreamer-filter] TLS handshake failed for %s: %s (cert: %s)", host.c_str(),
-			     errbuf, vbuf);
+			blog(LOG_WARNING, "[babelstreamer-filter] TLS handshake failed for %s: %s (cert: %s)",
+			     host.c_str(), errbuf, vbuf);
 		} else {
-			blog(LOG_WARNING, "[babelstreamer-filter] TLS handshake failed for %s: %s", host.c_str(), errbuf);
+			blog(LOG_WARNING, "[babelstreamer-filter] TLS handshake failed for %s: %s", host.c_str(),
+			     errbuf);
 		}
 		return false;
 	}
@@ -601,11 +599,9 @@ bool WebSocketClient::sendText(const std::string &text)
 	// Send all at once
 	const char *buf = reinterpret_cast<const char *>(frame.data());
 	size_t left = frame.size();
-	while (left > 0)
-    {
+	while (left > 0) {
 		int sent = ioSend(buf, (int)left);
-		if (sent <= 0)
-        {
+		if (sent <= 0) {
 			blog(LOG_WARNING, "[babelstreamer-filter] send() failed, disconnecting");
 			sockConnected.store(false);
 			if (onDisconnect)

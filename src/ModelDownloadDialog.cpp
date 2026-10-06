@@ -252,9 +252,9 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 	QMessageBox::information(parent, QStringLiteral("BabelStreamer"),
 				 QStringLiteral("Choose a folder to store the model."));
 
-	const QString dir = QFileDialog::getExistingDirectory(parent, QStringLiteral("Choose a folder to store the model"), startDir);
-	if (dir.isEmpty())
-    {
+	const QString dir = QFileDialog::getExistingDirectory(
+		parent, QStringLiteral("Choose a folder to store the model"), startDir);
+	if (dir.isEmpty()) {
 		onComplete(std::string());
 		return;
 	}
@@ -267,8 +267,7 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 	// we can call it a day
 	{
 		const QFileInfo have(finalPath);
-		if (have.isFile() && have.size() == model.bytes && fileSha256Hex(finalPath) == model.sha256)
-        {
+		if (have.isFile() && have.size() == model.bytes && fileSha256Hex(finalPath) == model.sha256) {
 			blog(LOG_INFO,
 			     "[babelstreamer-filter] '%s' is already present and verified - "
 			     "using it instead of downloading it again",
@@ -280,8 +279,7 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 
 	// Now let's try and create a file to store the download
 	auto *file = new QFile(partPath);
-	if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate))
-    {
+	if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
 		blog(LOG_WARNING, "[babelstreamer-filter] Could not open '%s' for writing the downloaded model",
 		     partPath.toUtf8().constData());
 		delete file;
@@ -337,14 +335,13 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 	if (file->isOpen())
 		file->close();
 
-	if (!succeeded)
-    {
+	if (!succeeded) {
 		file->remove();
 		delete file;
 		dialog->deleteLater();
-		if (err != QNetworkReply::OperationCanceledError)
-        {
-			blog(LOG_WARNING, "[babelstreamer-filter] Model download failed: %s", errString.toUtf8().constData());
+		if (err != QNetworkReply::OperationCanceledError) {
+			blog(LOG_WARNING, "[babelstreamer-filter] Model download failed: %s",
+			     errString.toUtf8().constData());
 			QMessageBox::warning(parent, QStringLiteral("BabelStreamer"),
 					     QStringLiteral("Downloading the model failed:\n%1").arg(errString));
 		}
@@ -357,8 +354,7 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 
 	// Before finalsing we do the hash check
 	const std::string actualHash = fileSha256Hex(partPath);
-	if (actualHash != model.sha256)
-    {
+	if (actualHash != model.sha256) {
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] Downloaded model failed integrity check "
 		     "(expected %s, got %s) - refusing to use it",
@@ -402,8 +398,7 @@ void downloadModelFile(const StandardModel &model, std::function<void(const std:
 namespace // for the Core ML models
 {
 
-struct PinnedEncoder
-{
+struct PinnedEncoder {
 	const char *dirName;
 	const char *url;
 	const char *sha256;
@@ -411,8 +406,7 @@ struct PinnedEncoder
 };
 
 // Standard mlmodelc are pinned at the 2026-09-19 version, with matching SHA256 checksum
-constexpr PinnedEncoder kPinnedEncoders[] =
-{
+constexpr PinnedEncoder kPinnedEncoders[] = {
 	{
 		"ggml-large-v3-encoder.mlmodelc",
 		"https://huggingface.co/ggerganov/whisper.cpp/resolve/"
@@ -432,9 +426,9 @@ constexpr PinnedEncoder kPinnedEncoders[] =
 // Check if there is a pinned encoder already available
 const PinnedEncoder *findPinnedEncoder(const std::string &dirName)
 {
-	for (const auto &e : kPinnedEncoders)
-    {
-		if (dirName == e.dirName) return &e;
+	for (const auto &e : kPinnedEncoders) {
+		if (dirName == e.dirName)
+			return &e;
 	}
 	return nullptr;
 }
@@ -445,7 +439,8 @@ bool macIsAppleSilicon()
 {
 	int val = 0;
 	size_t sz = sizeof(val);
-	if (sysctlbyname("hw.optional.arm64", &val, &sz, nullptr, 0) != 0) return false;
+	if (sysctlbyname("hw.optional.arm64", &val, &sz, nullptr, 0) != 0)
+		return false;
 	return val != 0;
 }
 #endif
@@ -471,13 +466,10 @@ void runCoremlWarmup(QWidget *parent, const QString &mlmodelcPath)
 
 	const std::string path = mlmodelcPath.toStdString();
 	std::thread worker([&dlg, path]() {
-		if (auto *c = whisper_coreml_init(path.c_str()))
-        {
+		if (auto *c = whisper_coreml_init(path.c_str())) {
 			whisper_coreml_free(c);
 			blog(LOG_INFO, "[babelstreamer-filter] Core ML warm-up complete for %s", path.c_str());
-		}
-        else
-        {
+		} else {
 			blog(LOG_WARNING,
 			     "[babelstreamer-filter] Core ML warm-up could not load %s "
 			     "(it will still compile lazily on first use)",
@@ -502,8 +494,7 @@ void runOnUiThreadLater(std::function<void()> fn)
 bool coremlEncoderCached(const std::string &modelPath)
 {
 	QString cacheDir;
-	if (char *c = obs_module_config_path("coreml"))
-    {
+	if (char *c = obs_module_config_path("coreml")) {
 		cacheDir = QString::fromUtf8(c);
 		bfree(c);
 	}
@@ -528,8 +519,7 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	return;
 #else
 	// The Neural Engine only exists on Apple Silicon, so fail if not
-	if (!macIsAppleSilicon())
-    {
+	if (!macIsAppleSilicon()) {
 		onComplete(CoremlEncoderResult::NotAvailable);
 		return;
 	}
@@ -539,8 +529,7 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	const QString dirName = QString::fromUtf8(dirNameStd.c_str());
 
 	// If we already have it, then we're done
-	if (coremlEncoderCached(modelPath))
-    {
+	if (coremlEncoderCached(modelPath)) {
 		onComplete(CoremlEncoderResult::Installed);
 		return;
 	}
@@ -551,8 +540,7 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 
 	// if we need to ask first put out a jargon-free message box to confirm this is
 	// what the user wants.
-	if (askFirst)
-    {
+	if (askFirst) {
 		const QString modelName = QFileInfo(QString::fromUtf8(modelPath.c_str())).fileName();
 		auto *askParent = static_cast<QWidget *>(obs_frontend_get_main_window());
 		const auto answer = QMessageBox::question(
@@ -582,14 +570,12 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	// Always goes to the plugin's own coreml cache (which we may need to create) - this is not an object
 	// that the user is meant to control
 	QString cacheDir;
-	if (char *c = obs_module_config_path("coreml"))
-    {
+	if (char *c = obs_module_config_path("coreml")) {
 		cacheDir = QString::fromUtf8(c);
 		bfree(c);
 	}
 
-	if (cacheDir.isEmpty() || !QDir().mkpath(cacheDir))
-    {
+	if (cacheDir.isEmpty() || !QDir().mkpath(cacheDir)) {
 		blog(LOG_WARNING, "[babelstreamer-filter] Could not create the Core ML cache directory");
 		onComplete(CoremlEncoderResult::Failed);
 		return;
@@ -600,8 +586,7 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	const QString zipPart = QDir(cacheDir).filePath(QStringLiteral("%1.zip.part").arg(dirName));
 
 	auto *file = new QFile(zipPart);
-	if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate))
-    {
+	if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
 		blog(LOG_WARNING, "[babelstreamer-filter] Could not open '%s' for writing the Core ML encoder",
 		     zipPart.toUtf8().constData());
 		delete file;
@@ -631,14 +616,14 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	QObject::connect(reply, &QNetworkReply::readyRead, dialogue,
 			 [reply, file]() { file->write(reply->readAll()); });
 	QObject::connect(dialogue->cancelBtn, &QPushButton::clicked, reply, &QNetworkReply::abort);
-    
-    // When the download is done then save the file and tidy up
+
+	// When the download is done then save the file and tidy up
 	QObject::connect(reply, &QNetworkReply::finished, dialogue, [dialogue, reply, file]() {
-                        file->write(reply->readAll());
-                        file->close();
-                        dialogue->markSucceeded(reply->error() == QNetworkReply::NoError);
-                        dialogue->accept();
-                    });
+		file->write(reply->readAll());
+		file->close();
+		dialogue->markSucceeded(reply->error() == QNetworkReply::NoError);
+		dialogue->accept();
+	});
 	dialogue->exec();
 
 	/*
@@ -649,30 +634,27 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	const QNetworkReply::NetworkError err = reply->error();
 	const QString errString = reply->errorString();
 	reply->deleteLater();
-	if (file->isOpen())file->close();
+	if (file->isOpen())
+		file->close();
 	dialogue->deleteLater();
 
-    // Error cases - report and log
-	if (!succeeded)
-    {
+	// Error cases - report and log
+	if (!succeeded) {
 		file->remove();
 		delete file;
 
-		if (err == QNetworkReply::OperationCanceledError)
-        {
+		if (err == QNetworkReply::OperationCanceledError) {
 			onComplete(CoremlEncoderResult::Cancelled);
 			return;
 		}
-		if (err == QNetworkReply::ContentNotFoundError)
-        {
+		if (err == QNetworkReply::ContentNotFoundError) {
 			// No published encoder for this model
 			blog(LOG_INFO, "[babelstreamer-filter] No Neural Engine encoder is published for %s",
 			     dirName.toUtf8().constData());
 			onComplete(CoremlEncoderResult::NotAvailable);
 			return;
 		}
-		if (err != QNetworkReply::OperationCanceledError)
-        {
+		if (err != QNetworkReply::OperationCanceledError) {
 			blog(LOG_WARNING, "[babelstreamer-filter] Core ML encoder download failed: %s",
 			     errString.toUtf8().constData());
 			QMessageBox::warning(
@@ -686,8 +668,7 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 
 	// If we're using a pinned standard model verify the hash
 	const std::string actualHash = pinned ? fileSha256Hex(zipPart) : std::string();
-	if (pinned && actualHash != pinned->sha256)
-    {
+	if (pinned && actualHash != pinned->sha256) {
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] Core ML encoder failed integrity check (expected %s, got %s) - discarding",
 		     pinned->sha256, actualHash.empty() ? "<unreadable>" : actualHash.c_str());
@@ -728,9 +709,8 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 	QDir(extractDir).removeRecursively();
 	QFile::remove(zipPart);
 
-    // Error handling for the final move
-	if (!moved)
-    {
+	// Error handling for the final move
+	if (!moved) {
 		blog(LOG_WARNING, "[babelstreamer-filter] Could not move the Core ML encoder into place at %s",
 		     finalDir.toUtf8().constData());
 		onComplete(CoremlEncoderResult::Failed);
@@ -747,8 +727,8 @@ void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 
 	onComplete(CoremlEncoderResult::Installed);
 #endif // __APPLE__
-    
-    // congratulations - you finally got to the end of the function
+
+	// congratulations - you finally got to the end of the function
 }
 
 // "You need a model"  download. In a namespace to make it invisible outside this module
@@ -757,8 +737,7 @@ namespace {
 /*
     Structure to pass results of chooser back
  */
-struct ChooserResult
-{
+struct ChooserResult {
 	bool accepted = false;
 	bool englishOnly = true;
 	std::string deviceId;
@@ -842,12 +821,10 @@ ChooserResult askForModelChoice(QWidget *parent, const std::vector<ProcessingDev
 	};
 
 	int initial = indexOfId(currentDevice);
-	if (initial < 0)
-    {
+	if (initial < 0) {
 		initial = indexOfId(neuralDeviceId);
 	}
-	if (initial < 0)
-    {
+	if (initial < 0) {
 		for (int i = 0; i < deviceComboBox->count(); ++i) {
 			if (deviceComboBox->itemData(i).toString() != QStringLiteral("cpu")) {
 				initial = i;
@@ -865,19 +842,14 @@ ChooserResult askForModelChoice(QWidget *parent, const std::vector<ProcessingDev
 	auto refresh = [englishBtn, deviceComboBox, devHint, downloadSizeLabel, neuralDeviceId]() {
 		const std::string id = deviceComboBox->currentData().toString().toStdString();
 		const bool isNeuralEngine = !neuralDeviceId.empty() && id == neuralDeviceId;
-		if (isNeuralEngine)
-        {
+		if (isNeuralEngine) {
 			devHint->setText(
 				QStringLiteral("Runs the model on the Neural Engine, leaving your graphics card free. "
 					       "Needs a one-time extra download, included below."));
-		}
-        else if (id == "cpu")
-        {
+		} else if (id == "cpu") {
 			devHint->setText(QStringLiteral(
 				"The CPU will work, but may not be powerful enough to keep up with live speech."));
-		}
-        else
-        {
+		} else {
 			devHint->setText(QStringLiteral(
 				"Pick your most powerful graphics card - that is what the model runs on. "
 				"It shares the card with OBS's own rendering."));
@@ -928,15 +900,13 @@ void downloadStandardModelGuided(const std::vector<ProcessingDeviceOption> &devi
 	auto *parent = static_cast<QWidget *>(obs_frontend_get_main_window());
 
 	// Handle the explanation dialogue
-	if (explainFirst)
-    {
+	if (explainFirst) {
 		const auto answer = QMessageBox::question(
 			parent, QStringLiteral("BabelStreamer"),
 			QStringLiteral("BabelStreamer has no speech model yet, so it cannot caption "
 				       "anything.\n\nDownload one now?"),
 			QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-		if (answer != QMessageBox::Yes)
-        {
+		if (answer != QMessageBox::Yes) {
 			onComplete(outcome);
 			return;
 		}
@@ -944,8 +914,7 @@ void downloadStandardModelGuided(const std::vector<ProcessingDeviceOption> &devi
 
 	// Show the chooser dialogue modally. If aborted exit the process
 	const ChooserResult choice = askForModelChoice(parent, devices, currentDevice, neuralDeviceId);
-	if (!choice.accepted)
-    {
+	if (!choice.accepted) {
 		onComplete(outcome);
 		return;
 	}
@@ -957,16 +926,14 @@ void downloadStandardModelGuided(const std::vector<ProcessingDeviceOption> &devi
 	const StandardModel &model = choice.englishOnly ? kEnglishModel : kMultilingualModel;
 	downloadModelFile(model, [&outcome](const std::string &path) { outcome.modelPath = path; });
 
-	if (outcome.modelPath.empty())
-    {
+	if (outcome.modelPath.empty()) {
 		onComplete(outcome); // cancelled or failed
 		return;
 	}
 
 	// If we're using core ML we need to get the core ML encoder. If this fails the
 	// device will fall back to CPU or GPU
-	if (!neuralDeviceId.empty() && outcome.deviceId == neuralDeviceId)
-    {
+	if (!neuralDeviceId.empty() && outcome.deviceId == neuralDeviceId) {
 		CoremlEncoderResult result = CoremlEncoderResult::Failed;
 		downloadCoremlEncoderFor(outcome.modelPath, /*askFirst=*/false,
 					 [&result](CoremlEncoderResult r) { result = r; });

@@ -33,7 +33,6 @@ struct WhisperFilter;
  */
 void filterDefaults(obs_data_t *settings);
 
-
 /**
     Called by OBS to build the properties dialogue
  

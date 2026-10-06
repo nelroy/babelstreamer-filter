@@ -40,11 +40,11 @@
  */
 void updateTextSource(const std::string &sourceName, const std::string &text)
 {
-	if (sourceName.empty()) return;
+	if (sourceName.empty())
+		return;
 
-	obs_source_t *source = obs_get_source_by_name (sourceName.c_str());
-	if (!source)
-    {
+	obs_source_t *source = obs_get_source_by_name(sourceName.c_str());
+	if (!source) {
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] Text source '%s' not found - "
 		     "check the source name in the filter properties",
@@ -61,7 +61,6 @@ void updateTextSource(const std::string &sourceName, const std::string &text)
 	blog(LOG_INFO, "[babelstreamer-filter] Caption → '%s': %s", sourceName.c_str(), text.c_str());
 }
 
-
 // Snapshot of this filter's contribution to the shared connection.
 ServerLinkParams makeLinkParams(WhisperFilter *myFilter)
 {
@@ -75,8 +74,7 @@ ServerLinkParams makeLinkParams(WhisperFilter *myFilter)
 	}
 	params.streamGateEnabled = myFilter->streamGateEnabled.load();
 	params.source = myFilter->context;
-	params.clearOverlay = [myFilter]
-    {
+	params.clearOverlay = [myFilter] {
 		std::string overlayName;
 		{
 			std::lock_guard<std::mutex> lk(myFilter->stateMtx);
@@ -96,15 +94,14 @@ static void onFilterEnableChanged(void *data, calldata_t *callData)
 	auto *filter = static_cast<WhisperFilter *>(data);
 	const bool enabled = calldata_bool(callData, "enabled");
 	blog(LOG_INFO, "[babelstreamer-filter] Filter %s", enabled ? "enabled" : "disabled");
-    
-    /*
+
+	/*
         Watch out for the fact that there may be multiple instances sharing resources
         serverLinkSetActive handles this with reference counting, but the overlay
         needs attention here.
      */
 	ServerLink::getInstance().serverLinkSetActive(filter->linkId, enabled);
-	if (!enabled)
-    {
+	if (!enabled) {
 		std::string overlayName;
 		{
 			std::lock_guard<std::mutex> lock(filter->stateMtx);
@@ -126,11 +123,11 @@ static void *filterCreate(obs_data_t *settings, obs_source_t *source)
 
 	registerFilter(filter);
 
-    // tell the link handler what the streaming status is
-	ServerLink::getInstance().setIsStreaming  (obs_frontend_streaming_active());
+	// tell the link handler what the streaming status is
+	ServerLink::getInstance().setIsStreaming(obs_frontend_streaming_active());
 	filterUpdate(filter, settings);
 
-    /*
+	/*
         If we don't have a model defined than ask for one, otherwise we may need to ask
         to link to the account. Only the master filter can meaningfully choose a
         model - a follower with no model yet just means the master hasn't set
@@ -155,7 +152,8 @@ static void *filterCreate(obs_data_t *settings, obs_source_t *source)
 		maybeOfferAccountLink();
 
 	runOnUiThreadLater([filter] {
-		if (!filterStillRegistered(filter)) return; // destroyed before this ran
+		if (!filterStillRegistered(filter))
+			return; // destroyed before this ran
 		obs_source_update(filter->context, nullptr);
 		if (filter->modelPath.empty() && isMasterFilterSource(filter->context))
 			offerModelDownload(filter);
@@ -163,58 +161,56 @@ static void *filterCreate(obs_data_t *settings, obs_source_t *source)
 			maybeOfferAccountLink();
 	});
 
-    // clear out leftover text
+	// clear out leftover text
 	updateTextSource(filter->textSourceName, "");
 
-    // Join the shared server connection - the returned id identifies this filter to
-    // the server handler
+	// Join the shared server connection - the returned id identifies this filter to
+	// the server handler
 	filter->linkId = ServerLink::getInstance().serverLinkAdd(makeLinkParams(filter));
 
-    // set the handler for enablement status change from OBS
+	// set the handler for enablement status change from OBS
 	signal_handler_connect(obs_source_get_signal_handler(source), "enable", onFilterEnableChanged, filter);
 
-    return filter;
+	return filter;
 }
-
 
 static void filterDestroy(void *data)
 {
 	auto *filter = static_cast<WhisperFilter *>(data);
 	unregisterFilter(filter);
-	signal_handler_disconnect(obs_source_get_signal_handler(filter->context), "enable", onFilterEnableChanged, filter);
-	
-    // Stop first so we don't accidentally queue after teardown
+	signal_handler_disconnect(obs_source_get_signal_handler(filter->context), "enable", onFilterEnableChanged,
+				  filter);
+
+	// Stop first so we don't accidentally queue after teardown
 	{
 		std::lock_guard<std::mutex> lockk(filter->whisperMtx);
 		filter->whisper.reset();
 	}
-    
+
 	// Unregister from the link
 	ServerLink::getInstance().serverLinkRemove(filter->linkId);
-    
+
 	updateTextSource(filter->textSourceName, "");
 	delete filter;
 }
 
-
 // Handle OBS audio data block - return unmodified because we only use it for transcript
-static struct obs_audio_data *filterAudio (void *data, struct obs_audio_data *audio)
+static struct obs_audio_data *filterAudio(void *data, struct obs_audio_data *audio)
 {
 	auto *filter = static_cast<WhisperFilter *>(data);
 
 	// Try to acquire the lock without blocking the audio thread.
 	// Dropping a frame is better than stalling
-	if (!filter->whisperMtx.try_lock()) return audio;
+	if (!filter->whisperMtx.try_lock())
+		return audio;
 
-	if (!filter->whisper)
-    {
+	if (!filter->whisper) {
 		filter->whisperMtx.unlock();
 		return audio;
 	}
 
 	// Apply the stream gating
-	if (filter->streamGateEnabled.load() && !ServerLink::getInstance().serverLinkIsStreaming())
-    {
+	if (filter->streamGateEnabled.load() && !ServerLink::getInstance().serverLinkIsStreaming()) {
 		filter->whisperMtx.unlock();
 		return audio;
 	}
@@ -225,8 +221,7 @@ static struct obs_audio_data *filterAudio (void *data, struct obs_audio_data *au
 	uint32_t srcChannels = aoi ? (uint32_t)get_audio_channels(aoi->speakers) : 2u;
 	uint32_t nFrames = audio->frames;
 
-	if (nFrames == 0)
-    {
+	if (nFrames == 0) {
 		filter->whisperMtx.unlock();
 		return audio;
 	}
@@ -234,15 +229,14 @@ static struct obs_audio_data *filterAudio (void *data, struct obs_audio_data *au
 	const float *const *planes = reinterpret_cast<const float *const *>(audio->data);
 
 	// little helper to downmix a planar audio frame to mono
-	auto monoSample = [&](uint32_t frame) -> float
-    {
-		if (srcChannels == 1) return planes[0][frame];
+	auto monoSample = [&](uint32_t frame) -> float {
+		if (srcChannels == 1)
+			return planes[0][frame];
 		double sum = 0.0;
 		for (uint32_t c = 0; c < srcChannels; ++c)
 			sum += planes[c][frame];
 		return (float)(sum / srcChannels);
 	};
-
 
 	// resample to 16kHz
 	const float ratio = (float)srcRate / (float)WHISPER_SAMPLE_RATE;
@@ -251,8 +245,7 @@ static struct obs_audio_data *filterAudio (void *data, struct obs_audio_data *au
 	resampled.reserve((uint32_t)(nFrames / ratio) + 2);
 
 	float pos = filter->resampleAccum;
-	while (pos < (float)nFrames)
-    {
+	while (pos < (float)nFrames) {
 		uint32_t i0 = (uint32_t)pos;
 		uint32_t i1 = std::min(i0 + 1, nFrames - 1);
 		float frac = pos - (float)i0;
@@ -275,7 +268,7 @@ static struct obs_audio_data *filterAudio (void *data, struct obs_audio_data *au
 static obs_source_info whisperFilterInfo = {};
 static const char *filterGetName(void *)
 {
-    return "BabelStreamer Speech Filter";
+	return "BabelStreamer Speech Filter";
 }
 
 // return the setup data for the filter

@@ -41,8 +41,7 @@
     - Apple Neural Engine
  
  */
-struct ProcessingDeviceOption
-{
+struct ProcessingDeviceOption {
 	std::string id;    /*! id for device */
 	std::string label; /*! label for device*/
 };
@@ -50,8 +49,7 @@ struct ProcessingDeviceOption
 /**
     Structure for storing outcome of standard model choice
  */
-struct StandardModelOutcome
-{
+struct StandardModelOutcome {
 	bool accepted = false;    /*! false = they backed out before anything was fetched */
 	bool englishOnly = false; /*! they picked the English-only model */
 	std::string deviceId;     /*! the processing device they picked */
@@ -89,8 +87,7 @@ void runOnUiThreadLater(std::function<void()> fn);
 /**
     Outcome of fetching a Core ML encoder.
  */
-enum class CoremlEncoderResult
-{
+enum class CoremlEncoderResult {
 	Installed,    /*! downloaded (or already present) and ready to use */
 	NotAvailable, /*! no published encoder for this model — not an error */
 	Cancelled,    /*! the streamer backed out */
@@ -117,7 +114,6 @@ enum class CoremlEncoderResult
  */
 void downloadCoremlEncoderFor(const std::string &modelPath, bool askFirst,
 			      std::function<void(CoremlEncoderResult)> onComplete);
-
 
 /**
     Derive the name of a Core ML encoder model from the whisper language model. For example the

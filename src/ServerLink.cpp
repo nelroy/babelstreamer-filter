@@ -66,7 +66,7 @@
     returns "ABC123"
  */
 
-static std::string extractJsonString (const std::string &json, const std::string &field)
+static std::string extractJsonString(const std::string &json, const std::string &field)
 {
 	const std::string needle = "\"" + field + "\"";
 	auto pos = json.find(needle);
@@ -78,8 +78,7 @@ static std::string extractJsonString (const std::string &json, const std::string
 	++pos; // step past opening quote
 
 	std::string result;
-	for (; pos < json.size(); ++pos)
-    {
+	for (; pos < json.size(); ++pos) {
 		char c = json[pos];
 		if (c == '"')
 			return result; // unescaped closing quote
@@ -129,7 +128,8 @@ static std::string extractJsonString (const std::string &json, const std::string
 static void popupSessionCreated(const std::string &key, const std::string &usageMessage)
 {
 	std::string body = "Copy the session key and share it with your viewers.";
-	if (!usageMessage.empty()) 	body += "\n\n" + usageMessage;
+	if (!usageMessage.empty())
+		body += "\n\n" + usageMessage;
 	showBabelStreamerPopup(PopupKind::SessionCreated, "Session Created", body, key);
 }
 
@@ -186,7 +186,8 @@ static std::string rawMachineId()
 	CFStringRef uuidRef = static_cast<CFStringRef>(
 		IORegistryEntryCreateCFProperty(entry, CFSTR("IOPlatformUUID"), kCFAllocatorDefault, 0));
 	IOObjectRelease(entry);
-	if (!uuidRef) return "";
+	if (!uuidRef)
+		return "";
 
 	char buf[64] = {0};
 	bool ok = CFStringGetCString(uuidRef, buf, sizeof(buf), kCFStringEncodingUTF8);
@@ -232,11 +233,9 @@ static std::string computeDeviceFingerprint()
     adopted, every other client's are compared and just logged if they
     disagree.
  */
-class ServerLink::Pimpl
-{
+class ServerLink::Pimpl {
 public:
-
-    /*
+	/*
         Add a client (filter) to the list of clients. If this is the first
         client we take the opportunity to build up the socket. adoptParamsLocked()
         works out for itself whether this new client is the master (OBS's
@@ -244,7 +243,7 @@ public:
         that turns out to sit earlier in the UI than one already registered),
         so it runs unconditionally rather than only on the very first add.
      */
-    ServerLinkId add(ServerLinkParams p)
+	ServerLinkId add(ServerLinkParams p)
 	{
 		ServerLinkId id;
 		bool first = false;
@@ -253,12 +252,12 @@ public:
 			id = nextId++;
 			clientList.push_back({id, std::move(p), true});
 			first = (clientList.size() == 1);
-			if (first)serverSocketClient = std::make_unique<WebSocketClient>();
+			if (first)
+				serverSocketClient = std::make_unique<WebSocketClient>();
 			adoptParamsLocked();
 			warnOnParamMismatchLocked(clientList.back());
 		}
-		if (first)
-        {
+		if (first) {
 			senderThread = std::thread(&Pimpl::senderLoop, this);
 			obs_frontend_add_event_callback(&Pimpl::frontendEvent, nullptr);
 		}
@@ -275,7 +274,8 @@ public:
 		{
 			std::lock_guard<std::mutex> lk(linkMutex);
 			auto it = findLocked(id);
-			if (it == clientList.end())return;
+			if (it == clientList.end())
+				return;
 			it->p = std::move(p);
 			adoptParamsLocked();
 			warnOnParamMismatchLocked(*it);
@@ -283,7 +283,7 @@ public:
 		linkConditionVariable.notify_one();
 	}
 
-    /*
+	/*
         Remove a client from the list - graceful teardown when deleting
         a filter instance. One little quirk - if the deleted filter
         was the master we need to nominate a new one, same as add()/update():
@@ -292,43 +292,43 @@ public:
      */
 	void remove(ServerLinkId id)
 	{
-        // remove the filter
+		// remove the filter
 		bool last = false;
 		{
 			std::lock_guard<std::mutex> lk(linkMutex);
 			auto it = findLocked(id);
-			if (it == clientList.end()) 	return;
+			if (it == clientList.end())
+				return;
 			clientList.erase(it);
 			if (clientList.empty()) {
 				senderStop = true;
 				last = true;
-			}
-            else
-            {
+			} else {
 				// The removed filter may have been the master; whoever is
 				// now first in OBS's filter order takes over.
 				adoptParamsLocked();
 			}
 		}
 
-        // tell everybody in case they have business to attend to
+		// tell everybody in case they have business to attend to
 		linkConditionVariable.notify_all();
 
-        // if this was the last one then tear down - essentially an implementation
-        // of reference counting
-        if (last)
-        {
-            if (senderThread.joinable()) senderThread.join();
-            obs_frontend_remove_event_callback(&Pimpl::frontendEvent, nullptr);
-            if (serverSocketClient) serverSocketClient->disconnect();
-            serverSocketClient.reset();
-            std::lock_guard<std::mutex> lk(linkMutex);
-            senderStop = false;
-            dropConnection = false;
-            outboxQueue.clear();
-            sessionKey_.clear();
-            lastReportedProblem.clear();
-        }
+		// if this was the last one then tear down - essentially an implementation
+		// of reference counting
+		if (last) {
+			if (senderThread.joinable())
+				senderThread.join();
+			obs_frontend_remove_event_callback(&Pimpl::frontendEvent, nullptr);
+			if (serverSocketClient)
+				serverSocketClient->disconnect();
+			serverSocketClient.reset();
+			std::lock_guard<std::mutex> lk(linkMutex);
+			senderStop = false;
+			dropConnection = false;
+			outboxQueue.clear();
+			sessionKey_.clear();
+			lastReportedProblem.clear();
+		}
 	}
 
 	/*
@@ -341,9 +341,11 @@ public:
 		{
 			std::lock_guard<std::mutex> lk(linkMutex);
 			auto clientInstance = findLocked(id);
-			if (clientInstance == clientList.end() || clientInstance->active == active)	return;
+			if (clientInstance == clientList.end() || clientInstance->active == active)
+				return;
 			clientInstance->active = active;
-			if (active || anyActiveLocked()) return;
+			if (active || anyActiveLocked())
+				return;
 			blog(LOG_INFO, "[babelstreamer-filter] No active filters left - closing the server connection");
 			dropConnection = true;
 			overlays = overlayClearersLocked();
@@ -362,10 +364,9 @@ public:
 		{
 			std::lock_guard<std::mutex> lk(linkMutex);
 			outboxQueue.push_back(std::move(json));
-			while (outboxQueue.size() > MAX_OUTBOX)
-            {
-                outboxQueue.pop_front();
-            }
+			while (outboxQueue.size() > MAX_OUTBOX) {
+				outboxQueue.pop_front();
+			}
 		}
 		linkConditionVariable.notify_one();
 	}
@@ -391,7 +392,7 @@ public:
 	}
 
 	/* status of streaming (obviously) */
-	void setIsStreaming (bool live) { isStreaming_.store(live); }
+	void setIsStreaming(bool live) { isStreaming_.store(live); }
 	bool isStreaming() const { return isStreaming_.load(); }
 
 	std::string sessionKey()
@@ -434,19 +435,14 @@ public:
 	{
 		// Nested class: may reach the singleton's private pimpl directly.
 		Pimpl &link = *ServerLink::getInstance().pimpl;
-		if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED)
-        {
+		if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED) {
 			link.isStreaming_.store(true);
 			blog(LOG_INFO, "[babelstreamer-filter] Streaming started");
-		}
-        else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPING)
-        {
+		} else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPING) {
 			link.isStreaming_.store(false);
 			blog(LOG_INFO, "[babelstreamer-filter] Streaming stopping");
 			link.applyStreamGate();
-		}
-        else if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING)
-        {
+		} else if (event == OBS_FRONTEND_EVENT_FINISHED_LOADING) {
 			// Every source is now guaranteed to exist, including overlay text
 			// sources that may not have loaded yet when filterCreate() ran and
 			// tried to clear a stale caption.
@@ -455,8 +451,7 @@ public:
 	}
 
 private:
-	struct Client
-    {
+	struct Client {
 		ServerLinkId id;
 		ServerLinkParams p;
 		bool active;
@@ -481,11 +476,12 @@ private:
 	// The gate is the AND of every ACTIVE filter's checkbox
 	bool effectiveGateLocked() const
 	{
-		if (!anyActiveLocked())return true;
-		for (const auto &client : clientList)
-        {
-            if (client.active && !client.p.streamGateEnabled) return false;
-        }
+		if (!anyActiveLocked())
+			return true;
+		for (const auto &client : clientList) {
+			if (client.active && !client.p.streamGateEnabled)
+				return false;
+		}
 		return true;
 	}
 
@@ -511,7 +507,8 @@ private:
      */
 	void adoptParamsLocked()
 	{
-		if (clientList.empty()) return;
+		if (clientList.empty())
+			return;
 		auto masterIt = std::find_if(clientList.begin(), clientList.end(),
 					     [](const Client &c) { return isMasterFilterSource(c.p.source); });
 		const ServerLinkParams &p = (masterIt != clientList.end()) ? masterIt->p : clientList.front().p;
@@ -523,8 +520,7 @@ private:
 		useTls_ = p.useTls;
 		token_ = p.deviceToken;
 		sessionKey_.clear();
-		if (hadConnection)
-        {
+		if (hadConnection) {
 			// Route through sender to avoid blocking UI thread
 			dropConnection = true;
 			blog(LOG_INFO, "[babelstreamer-filter] Server settings changed, will reconnect");
@@ -537,22 +533,26 @@ private:
      */
 	void warnOnParamMismatchLocked(const Client &client) const
 	{
-		if (!isMasterFilterSource(client.p.source))return;
-		if (client.p.host == host_ && client.p.port == port_ && client.p.useTls == useTls_ && client.p.deviceToken == token_)
+		if (!isMasterFilterSource(client.p.source))
+			return;
+		if (client.p.host == host_ && client.p.port == port_ && client.p.useTls == useTls_ &&
+		    client.p.deviceToken == token_)
 			return;
 		blog(LOG_WARNING,
 		     "[babelstreamer-filter] The master filter's server settings (%s://%s:%u) differ from "
 		     "the active connection (%s://%s:%u) - ignored.",
-		     client.p.useTls ? "wss" : "ws", client.p.host.c_str(), (unsigned)client.p.port, useTls_ ? "wss" : "ws",
-		     host_.c_str(), (unsigned)port_);
+		     client.p.useTls ? "wss" : "ws", client.p.host.c_str(), (unsigned)client.p.port,
+		     useTls_ ? "wss" : "ws", host_.c_str(), (unsigned)port_);
 	}
 
 	// Dedup on the message text, not on whether a session was live
 	bool claimProblem(const std::string &message, bool clearSession)
 	{
 		std::lock_guard<std::mutex> lk(linkMutex);
-		if (clearSession) sessionKey_.clear();
-		if (message == lastReportedProblem) return false;
+		if (clearSession)
+			sessionKey_.clear();
+		if (message == lastReportedProblem)
+			return false;
 		lastReportedProblem = message;
 		return true;
 	}
@@ -566,10 +566,10 @@ private:
 	{
 		const std::string type = extractJsonString(frame, "type");
 
-		if (type == "session")
-        {
+		if (type == "session") {
 			const std::string key = extractJsonString(frame, "key");
-			if (key.empty()) return;
+			if (key.empty())
+				return;
 			std::string previousKey;
 			{
 				std::lock_guard<std::mutex> lk(linkMutex);
@@ -584,24 +584,21 @@ private:
 			blog(LOG_INFO, "[babelstreamer-filter] Session key: %s", key.c_str());
 			// The device token is stable, so the derived key is normally the
 			// SAME one every time - only pop a dialog when it actually changes.
-			if (key != previousKey)
-            {
+			if (key != previousKey) {
 				const std::string usageMessage = extractJsonString(frame, "message");
 				std::thread(popupSessionCreated, key, usageMessage).detach();
 			}
 			return;
 		}
 
-		if (type == "usage_warning")
-        {
+		if (type == "usage_warning") {
 			const std::string message = extractJsonString(frame, "message");
 			blog(LOG_INFO, "[babelstreamer-filter] Usage warning: %s", message.c_str());
 			std::thread(popupUsageWarning, message).detach();
 			return;
 		}
 
-		if (type == "error")
-        {
+		if (type == "error") {
 			const std::string message = extractJsonString(frame, "message");
 			blog(LOG_WARNING, "[babelstreamer-filter] Server error: %s", message.c_str());
 			serverSocketClient->disconnect();
@@ -616,18 +613,16 @@ private:
         or a mid-stream cap/lapse error). Piggybacking on the per-transcript send
         means a pushed message is picked up the next time there's something to send
      */
-    void drainPendingMessages()
+	void drainPendingMessages()
 	{
-		for (int i = 0; i < 8; ++i)
-        {
+		for (int i = 0; i < 8; ++i) {
 			std::string frame;
 			if (!serverSocketClient->receiveText(frame, 5))
 				break; // nothing pending, or a real failure
 			handleServerFrame(frame);
 		}
 
-		if (!serverSocketClient->isConnected())
-        {
+		if (!serverSocketClient->isConnected()) {
 			const std::string message = "The connection to the BabelStreamer server was lost.";
 			if (claimProblem(message, /*clearSession=*/true))
 				std::thread(popupSessionDisconnected, message).detach();
@@ -640,8 +635,7 @@ private:
      */
 	void ensureConnected()
 	{
-		if (serverSocketClient->isConnected())
-        {
+		if (serverSocketClient->isConnected()) {
 			drainPendingMessages();
 			return;
 		}
@@ -657,19 +651,16 @@ private:
 			token = token_;
 		}
 
-		if (token.empty())
-        {
+		if (token.empty()) {
 			const std::string message =
 				"No device token configured - use \"Connect account\" in this filter's "
 				"settings to link this OBS to your BabelStreamer account.";
 			blog(LOG_WARNING, "[babelstreamer-filter] %s", message.c_str());
-			if (claimProblem(message, /*clearSession=*/false))
-            {
-                std::thread(popupSessionDisconnected, message).detach();
-            }
+			if (claimProblem(message, /*clearSession=*/false)) {
+				std::thread(popupSessionDisconnected, message).detach();
+			}
 			return;
 		}
-
 
 		/*
             Send the token. User headers rather thaמ URL query string as we
@@ -708,14 +699,15 @@ private:
 		constexpr auto kConnectBackoff = std::chrono::seconds(5);
 		auto lastConnectFailure = std::chrono::steady_clock::time_point{};
 
-		for (;;)
-        {
+		for (;;) {
 			std::string msg;
 			bool hangUp = false;
 			bool gatedOff = false;
 			{
 				std::unique_lock<std::mutex> lk(linkMutex);
-				linkConditionVariable.wait(lk, [&] { return senderStop || dropConnection || !outboxQueue.empty(); });
+				linkConditionVariable.wait(lk, [&] {
+					return senderStop || dropConnection || !outboxQueue.empty();
+				});
 				if (senderStop)
 					break;
 				hangUp = dropConnection;
@@ -732,27 +724,22 @@ private:
 			if (msg.empty())
 				continue;
 
-			if (!serverSocketClient->isConnected())
-            {
+			if (!serverSocketClient->isConnected()) {
 				// Gated off and not live: never open a new connection. A
 				// transcript can still be sitting in the queue from right
 				// before the gate closed - don't let it force a reconnect.
 				if (gatedOff)
 					continue;
 				const auto now = std::chrono::steady_clock::now();
-				if (now - lastConnectFailure < kConnectBackoff)
-                {
-                    continue; // still backing off
-                }
+				if (now - lastConnectFailure < kConnectBackoff) {
+					continue; // still backing off
+				}
 				ensureConnected();
-				if (!serverSocketClient->isConnected())
-                {
+				if (!serverSocketClient->isConnected()) {
 					lastConnectFailure = now;
 					continue; // connect failed
 				}
-			}
-            else
-            {
+			} else {
 				ensureConnected(); // connected: just drains pushed server frames
 			}
 
@@ -787,8 +774,8 @@ private:
  */
 ServerLink &ServerLink::getInstance()
 {
-    static ServerLink link;
-    return link;
+	static ServerLink link;
+	return link;
 }
 
 // Constructor creates the pimpl
@@ -826,9 +813,9 @@ void ServerLink::serverLinkApplyStreamGate()
 	pimpl->applyStreamGate();
 }
 
-void ServerLink::setIsStreaming (bool live)
+void ServerLink::setIsStreaming(bool live)
 {
-	pimpl->setIsStreaming (live);
+	pimpl->setIsStreaming(live);
 }
 
 bool ServerLink::serverLinkIsStreaming()

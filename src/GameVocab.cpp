@@ -33,8 +33,7 @@
 #include <fstream>
 #include <mutex>
 
-namespace
-{
+namespace {
 
 // Cache filename inside the plugin's OBS config directory.
 const char *const kCacheFilename = "game_vocab_cache.json";
@@ -56,12 +55,13 @@ std::atomic<bool> fetchInFlight{false};
 std::string cacheFilePath()
 {
 	char *dir = obs_module_config_path(nullptr);
-	if (!dir) return {};
+	if (!dir)
+		return {};
 
 	std::string path(dir);
 	bfree(dir);
-    
-    // fix up trailing slashes
+
+	// fix up trailing slashes
 	if (!path.empty() && path.back() != '/' && path.back() != '\\')
 		path += '/';
 	path += kCacheFilename;
@@ -74,14 +74,17 @@ std::string cacheFilePath()
  */
 void loadCacheLocked()
 {
-	if (cacheLoadedFromDisk) return;
+	if (cacheLoadedFromDisk)
+		return;
 	cacheLoadedFromDisk = true;
 
 	const std::string path = cacheFilePath();
-	if (path.empty()) return;
+	if (path.empty())
+		return;
 
 	std::ifstream in(path, std::ios::binary);
-	if (!in) return;
+	if (!in)
+		return;
 
 	const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
 	cachedGames = QJsonDocument::fromJson(QByteArray::fromStdString(text))
@@ -97,20 +100,21 @@ void loadCacheLocked()
 void saveCacheLocked()
 {
 	char *dir = obs_module_config_path(nullptr);
-	if (dir)
-    {
+	if (dir) {
 		os_mkdirs(dir);
 		bfree(dir);
 	}
 
 	const std::string path = cacheFilePath();
-	if (path.empty()) return;
+	if (path.empty())
+		return;
 
 	QJsonObject root;
 	root.insert(QStringLiteral("games"), cachedGames);
 
 	std::ofstream out(path, std::ios::binary | std::ios::trunc);
-	if (out) out << QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+	if (out)
+		out << QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
 }
 
 /*
@@ -121,8 +125,7 @@ void saveCacheLocked()
 QJsonArray findTermsLocked(const std::string &gameName)
 {
 	const QString wanted = QString::fromStdString(gameName);
-	for (const QJsonValue entry : cachedGames)
-    {
+	for (const QJsonValue entry : cachedGames) {
 		const QJsonObject game = entry.toObject();
 		if (game.value(QStringLiteral("name")).toString() == wanted)
 			return game.value(QStringLiteral("terms")).toArray();
@@ -140,7 +143,6 @@ void runOnMainThread(std::function<void()> work)
 
 } // namespace
 
-
 // Externally visible game list getter
 std::vector<std::string> cachedGameNames()
 {
@@ -149,8 +151,7 @@ std::vector<std::string> cachedGameNames()
 
 	std::vector<std::string> names;
 	names.reserve(cachedGames.size());
-	for (const QJsonValue entry : cachedGames)
-    {
+	for (const QJsonValue entry : cachedGames) {
 		const QString name = entry.toObject().value(QStringLiteral("name")).toString();
 		if (!name.isEmpty())
 			names.push_back(name.toStdString());
@@ -161,14 +162,14 @@ std::vector<std::string> cachedGameNames()
 // Externally visible game term getter
 std::string cachedGameTerms(const std::string &gameName)
 {
-	if (gameName.empty()) return {};
+	if (gameName.empty())
+		return {};
 
 	std::lock_guard<std::mutex> lock(cacheMutex);
 	loadCacheLocked();
 
 	std::string joined;
-	for (const QJsonValue entry : findTermsLocked(gameName))
-    {
+	for (const QJsonValue entry : findTermsLocked(gameName)) {
 		const QString term = entry.toObject().value(QStringLiteral("term")).toString();
 		if (term.isEmpty())
 			continue;
@@ -190,8 +191,8 @@ void refreshGameVocabulary()
 
 		QNetworkRequest request{QUrl(url)};
 		request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                             QNetworkRequest::NoLessSafeRedirectPolicy);
-        
+				     QNetworkRequest::NoLessSafeRedirectPolicy);
+
 		// Named and versioned so we can see this is a plugin call, rather than a random request
 		request.setHeader(QNetworkRequest::UserAgentHeader,
 				  QStringLiteral("BabelStreamer-OBS-Plugin/%1").arg(QString::fromUtf8(PLUGIN_VERSION)));
@@ -204,8 +205,7 @@ void refreshGameVocabulary()
 			manager->deleteLater();
 			fetchInFlight.store(false);
 
-			if (reply->error() != QNetworkReply::NoError)
-            {
+			if (reply->error() != QNetworkReply::NoError) {
 				blog(LOG_INFO, "[babelstreamer-filter] Game vocabulary refresh failed: %s",
 				     reply->errorString().toUtf8().constData());
 				return;
@@ -215,7 +215,8 @@ void refreshGameVocabulary()
 							 .object()
 							 .value(QStringLiteral("games"))
 							 .toArray();
-			if (games.isEmpty()) return;
+			if (games.isEmpty())
+				return;
 
 			std::lock_guard<std::mutex> lock(cacheMutex);
 			cachedGames = games;

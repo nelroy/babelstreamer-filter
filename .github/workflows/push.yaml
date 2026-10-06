@@ -18,13 +18,9 @@ jobs:
     permissions:
       contents: read
 
-  build-project:
-    name: Build Project 🧱
-    uses: ./.github/workflows/build-project.yaml
-    secrets: inherit
-    permissions:
-      contents: read
-
-  # No create-release job: this repo's CI only verifies the build compiles.
-  # Packaging/codesigning/notarizing/release-drafting are handled outside
-  # this repo - see COMPLIANCE.md.
+  # No build-project or create-release job: compiling requires a local
+  # whisper.cpp checkout (see WHISPER_ROOT in CMakeLists.txt) that this
+  # repo's CI has no step to fetch/build, so a compile job can only ever
+  # fail here. The build is verified locally instead. Packaging/codesigning/
+  # notarizing/release-drafting are handled outside this repo too - see
+  # COMPLIANCE.md.
