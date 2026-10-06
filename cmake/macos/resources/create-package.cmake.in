@@ -1,0 +1,51 @@
+make_directory("$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/package/Library/Application Support/obs-studio/plugins")
+
+if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin" AND NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin")
+  # NOTE: file(INSTALL)'s DESTINATION gets DESTDIR applied automatically
+  # (like install()) — do NOT also prefix it with $ENV{DESTDIR} or it's
+  # applied twice, silently writing the plugin outside of pkgbuild's --root
+  # and leaving the .pkg's payload empty. FILES (the source) is a plain
+  # filesystem read with no such auto-prefixing, so it still needs the
+  # manual $ENV{DESTDIR} — that's where install(TARGETS) actually staged it.
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/package/Library/Application Support/obs-studio/plugins"
+    TYPE DIRECTORY FILES "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin" USE_SOURCE_PERMISSIONS)
+
+  if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$" OR CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
+    if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin.dSYM" AND NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin.dSYM")
+      file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/package/Library/Application Support/obs-studio/plugins" TYPE DIRECTORY FILES "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.plugin.dSYM" USE_SOURCE_PERMISSIONS)
+    endif()
+  endif()
+endif()
+
+make_directory("$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/temp")
+
+execute_process(
+  COMMAND /usr/bin/pkgbuild
+    --identifier '@MACOS_BUNDLEID@'
+    --version '@CMAKE_PROJECT_VERSION@'
+    --root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/package"
+    "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/temp/@CMAKE_PROJECT_NAME@.pkg"
+    COMMAND_ERROR_IS_FATAL ANY
+  )
+
+set(_installer_sign_args "")
+if(NOT "@CODESIGN_INSTALLER_IDENTITY@" STREQUAL "")
+  set(_installer_sign_args --sign "@CODESIGN_INSTALLER_IDENTITY@")
+else()
+  message(WARNING "CODESIGN_INSTALLER_IDENTITY not set — @CMAKE_PROJECT_NAME@.pkg will be "
+                   "unsigned and will fail notarization.")
+endif()
+
+execute_process(
+  COMMAND /usr/bin/productbuild
+    --distribution "@CMAKE_CURRENT_BINARY_DIR@/distribution"
+    --package-path "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/temp"
+    --resources "@CMAKE_CURRENT_SOURCE_DIR@/cmake/macos/resources"
+    ${_installer_sign_args}
+    "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.pkg"
+    COMMAND_ERROR_IS_FATAL ANY)
+
+if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_PROJECT_NAME@.pkg")
+  file(REMOVE_RECURSE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/temp")
+  file(REMOVE_RECURSE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/package")
+endif()
